@@ -1,0 +1,389 @@
+from flask import Blueprint, render_template, session, redirect, url_for, flash, request, jsonify
+from app.models import storage
+
+tableros_bp = Blueprint("tableros", __name__)
+
+# Datos de plantillas (mantenemos las plantillas)
+PLANTILLAS_EJEMPLO = {
+    "direccion_adultos": {
+        "liderazgo-1": {
+            "nombre": "Reunión de Líderes",
+            "descripcion": "Template para reuniones de liderazgo ministerial",
+            "icono": "👥",
+            "listas": ["Agenda", "Decisiones", "Seguimiento"],
+        },
+        "planificacion-1": {
+            "nombre": "Planificación Anual",
+            "descripcion": "Template para planificación estratégica",
+            "icono": "📋",
+            "listas": ["Objetivos", "Recursos", "Cronograma"],
+        },
+    },
+    "familia": {
+        "actividades-fam-1": {
+            "nombre": "Actividades Familiares",
+            "descripcion": "Template para eventos y actividades familiares",
+            "icono": "👨‍👩‍👧‍👦",
+            "listas": ["Planificación", "Participantes", "Recursos"],
+        },
+        "crecimiento-fam-1": {
+            "nombre": "Crecimiento Familiar",
+            "descripcion": "Template para seguimiento del crecimiento familiar",
+            "icono": "🌱",
+            "listas": ["Metas", "Progreso", "Reflexiones"],
+        },
+    },
+    "estudiantes": {
+        "juventud-1": {
+            "nombre": "Grupo Juvenil",
+            "descripcion": "Template para actividades y proyectos juveniles",
+            "icono": "🎓",
+            "listas": ["Actividades", "Participantes", "Recursos"],
+        },
+        "estudios-1": {
+            "nombre": "Estudios Bíblicos",
+            "descripcion": "Template para organizar estudios bíblicos",
+            "icono": "📖",
+            "listas": ["Temas", "Materiales", "Participantes"],
+        },
+    },
+    "crecimiento": {
+        "personal-1": {
+            "nombre": "Crecimiento Personal",
+            "descripcion": "Template para desarrollo personal y espiritual",
+            "icono": "🚀",
+            "listas": ["Metas", "Hábitos", "Reflexiones"],
+        },
+        "espiritual-1": {
+            "nombre": "Metas Espirituales",
+            "descripcion": "Template para el crecimiento espiritual",
+            "icono": "🙏",
+            "listas": ["Objetivos", "Prácticas", "Progreso"],
+        },
+    },
+    "servicio": {
+        "comunitario-1": {
+            "nombre": "Proyectos de Servicio",
+            "descripcion": "Template para proyectos de servicio comunitario",
+            "icono": "🤝",
+            "listas": ["Planificación", "Voluntarios", "Impacto"],
+        },
+        "ministerios-1": {
+            "nombre": "Ministerios",
+            "descripcion": "Template para gestionar diferentes ministerios",
+            "icono": "⛪",
+            "listas": ["Actividades", "Miembros", "Recursos"],
+        },
+    },
+}
+
+
+@tableros_bp.route("/")
+def lista():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    # Obtener tableros reales del storage
+    tableros = [t.to_dict() for t in storage.get_all_tableros()]
+    stats = storage.get_stats()
+    
+    return render_template("tableros/lista.html", tableros=tableros, stats=stats)
+
+
+@tableros_bp.route("/<tablero_id>")
+def ver(tablero_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    tablero = storage.get_tablero(tablero_id)
+    if not tablero:
+        flash("Tablero no encontrado", "error")
+        return redirect(url_for("tableros.lista"))
+
+    tablero_dict = tablero.to_dict()
+    listas = tablero_dict['listas']
+    usuario = {"username": session.get("username")}
+    
+    return render_template("tableros/ver.html", tablero=tablero_dict, listas=listas, usuario=usuario)
+
+
+@tableros_bp.route("/crear")
+def crear():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    return render_template("tableros/crear.html", plantillas=PLANTILLAS_EJEMPLO)
+
+
+@tableros_bp.route("/editar/<tablero_id>")
+def editar(tablero_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+        
+    tablero = storage.get_tablero(tablero_id)
+    if not tablero:
+        flash("Tablero no encontrado", "error")
+        return redirect(url_for("tableros.lista"))
+        
+    return render_template("tableros/editar.html", tablero=tablero.to_dict())
+
+
+@tableros_bp.route("/procesar", methods=["POST"])
+def procesar():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    # Obtener datos del formulario
+    nombre = request.form.get("nombre", "").strip()
+    descripcion = request.form.get("descripcion", "").strip()
+    icono = request.form.get("icono", "📋").strip()
+    
+    if not nombre:
+        flash("El nombre del tablero es obligatorio", "error")
+        return redirect(url_for("tableros.crear"))
+
+    # Crear tablero real
+    tablero = storage.crear_tablero(
+        nombre=nombre,
+        descripcion=descripcion,
+        icono=icono,
+        creador_id=session.get("user_id")
+    )
+    
+    # Agregar listas iniciales si se especificaron
+    listas_nombres = request.form.getlist("listas[]")
+    for lista_nombre in listas_nombres:
+        if lista_nombre.strip():
+            tablero.agregar_lista(lista_nombre.strip())
+    
+    flash(f"¡Tablero '{nombre}' creado exitosamente!", "success")
+    return redirect(url_for("tableros.ver", tablero_id=tablero.id))
+
+
+@tableros_bp.route("/plantillas")
+def plantillas():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    return render_template("tableros/plantillas.html", plantillas=PLANTILLAS_EJEMPLO)
+
+
+# ===== NUEVAS RUTAS FUNCIONALES =====
+
+@tableros_bp.route("/agregar_lista/<tablero_id>", methods=["POST"])
+def agregar_lista(tablero_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+        
+    tablero = storage.get_tablero(tablero_id)
+    if not tablero:
+        flash("Tablero no encontrado", "error")
+        return redirect(url_for("tableros.lista"))
+    
+    nombre_lista = request.form.get("nombre", "").strip()
+    color = request.form.get("color", "#3b82f6")
+    
+    if not nombre_lista:
+        flash("El nombre de la lista es obligatorio", "error")
+        return redirect(url_for("tableros.ver", tablero_id=tablero_id))
+    
+    tablero.agregar_lista(nombre_lista, color)
+    flash(f"Lista '{nombre_lista}' agregada exitosamente", "success")
+    return redirect(url_for("tableros.ver", tablero_id=tablero_id))
+
+
+@tableros_bp.route("/agregar_tarjeta/<tablero_id>/<lista_id>", methods=["POST"])
+def agregar_tarjeta(tablero_id, lista_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+        
+    tablero = storage.get_tablero(tablero_id)
+    if not tablero:
+        flash("Tablero no encontrado", "error")
+        return redirect(url_for("tableros.lista"))
+    
+    lista = tablero.get_lista(lista_id)
+    if not lista:
+        flash("Lista no encontrada", "error")
+        return redirect(url_for("tableros.ver", tablero_id=tablero_id))
+    
+    titulo = request.form.get("titulo", "").strip()
+    descripcion = request.form.get("descripcion", "").strip()
+    responsable = request.form.get("responsable", "").strip()
+    
+    if not titulo:
+        flash("El título de la tarjeta es obligatorio", "error")
+        return redirect(url_for("tableros.ver", tablero_id=tablero_id))
+    
+    lista.agregar_tarjeta(titulo, descripcion, responsable)
+    flash(f"Tarjeta '{titulo}' agregada exitosamente", "success")
+    return redirect(url_for("tableros.ver", tablero_id=tablero_id))
+
+
+@tableros_bp.route("/eliminar_tablero/<tablero_id>", methods=["POST"])
+def eliminar_tablero(tablero_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+        
+    tablero = storage.get_tablero(tablero_id)
+    if not tablero:
+        flash("Tablero no encontrado", "error")
+        return redirect(url_for("tableros.lista"))
+    
+    nombre_tablero = tablero.nombre
+    storage.eliminar_tablero(tablero_id)
+    flash(f"Tablero '{nombre_tablero}' eliminado exitosamente", "success")
+    return redirect(url_for("tableros.lista"))
+
+
+# ===== RUTAS PLACEHOLDER (mantener por compatibilidad) =====
+
+@tableros_bp.route("/descargar/<formato>")
+def descargar_datos(formato):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    flash(f"Descarga {formato} (funcionalidad próximamente)", "info")
+    return redirect(url_for("tableros.lista"))
+
+
+@tableros_bp.route("/descargar_plantilla")
+def descargar_plantilla_excel():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    flash("Descarga plantilla Excel (funcionalidad próximamente)", "info")
+    return redirect(url_for("tableros.lista"))
+
+
+@tableros_bp.route("/crear_desde_plantilla/<plantilla_id>")
+def crear_desde_plantilla(plantilla_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    # Buscar la plantilla
+    plantilla_encontrada = None
+    for categoria_key, categoria in PLANTILLAS_EJEMPLO.items():
+        if plantilla_id in categoria:
+            plantilla_encontrada = categoria[plantilla_id]
+            break
+
+    if not plantilla_encontrada:
+        flash("Plantilla no encontrada", "error")
+        return redirect(url_for("tableros.plantillas"))
+
+    # Crear tablero desde plantilla
+    tablero = storage.crear_tablero(
+        nombre=plantilla_encontrada["nombre"],
+        descripcion=plantilla_encontrada["descripcion"],
+        icono=plantilla_encontrada["icono"],
+        creador_id=session.get("user_id")
+    )
+    
+    # Agregar listas de la plantilla
+    for lista_nombre in plantilla_encontrada["listas"]:
+        tablero.agregar_lista(lista_nombre)
+    
+    flash(f"¡Tablero creado desde plantilla: {plantilla_encontrada['nombre']}!", "success")
+    return redirect(url_for("tableros.ver", tablero_id=tablero.id))
+
+# ===== RUTAS FALTANTES PARA COMPATIBILIDAD CON TEMPLATES =====
+
+@tableros_bp.route("/importar_excel/<lista_id>")
+def importar_excel(lista_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    flash("Importar Excel (funcionalidad próximamente)", "info")
+    return redirect(url_for("tableros.lista"))
+
+
+@tableros_bp.route("/editar_lista/<lista_id>")
+def editar_lista(lista_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    flash("Editar lista (funcionalidad próximamente)", "info")
+    return redirect(url_for("tableros.lista"))
+
+
+@tableros_bp.route("/editar_tarjeta/<lista_id>/<tarjeta_id>")
+def editar_tarjeta(lista_id, tarjeta_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    flash("Editar tarjeta (funcionalidad próximamente)", "info")
+    return redirect(url_for("tableros.lista"))
+
+
+@tableros_bp.route("/eliminar_tarjeta/<lista_id>/<tarjeta_id>")
+def eliminar_tarjeta(lista_id, tarjeta_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    flash("Eliminar tarjeta (funcionalidad próximamente)", "info")
+    return redirect(url_for("tableros.lista"))
+
+@tableros_bp.route("/agregar_lista", methods=["POST"])
+def agregar_lista_simple():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    
+    # Obtener el tablero_id del formulario o query params
+    tablero_id = request.form.get("tablero_id") or request.args.get("tablero_id")
+    
+    if not tablero_id:
+        flash("Error: ID de tablero requerido", "error")
+        return redirect(url_for("tableros.lista"))
+    
+    return agregar_lista(tablero_id)
+
+
+@tableros_bp.route("/agregar_lista", methods=["POST"])
+def agregar_lista_desde_template():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    
+    # Obtener datos del formulario JavaScript
+    tablero_id = request.form.get("tablero_id")
+    nombre_lista = request.form.get("nombre", "").strip()
+    color = request.form.get("color", "#3b82f6")
+    
+    print(f"DEBUG: tablero_id={tablero_id}, nombre={nombre_lista}")  # Para debug
+    
+    if not tablero_id:
+        flash("Error: ID de tablero requerido", "error")
+        return redirect(url_for("tableros.lista"))
+        
+    if not nombre_lista:
+        flash("El nombre de la lista es obligatorio", "error")
+        return redirect(url_for("tableros.ver", tablero_id=tablero_id))
+    
+    tablero = storage.get_tablero(tablero_id)
+    if not tablero:
+        flash("Tablero no encontrado", "error")
+        return redirect(url_for("tableros.lista"))
+    
+    # Agregar la lista al tablero
+    tablero.agregar_lista(nombre_lista, color)
+    flash(f"Lista '{nombre_lista}' agregada exitosamente", "success")
+    return redirect(url_for("tableros.ver", tablero_id=tablero_id))
+@tableros_bp.route("/agregar_tarjeta", methods=["POST"])
+@tableros_bp.route("/agregar_tarjeta", methods=["POST"])
+def agregar_tarjeta_desde_template():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    
+    lista_id = request.form.get("lista_id")
+    titulo = request.form.get("titulo", "").strip()
+    descripcion = request.form.get("descripcion", "").strip()
+    responsable = request.form.get("responsable", "").strip()
+    
+    print(f"DEBUG agregar_tarjeta: lista_id={lista_id}, titulo={titulo}")
+    
+    if not lista_id or not titulo:
+        flash("Lista ID y título son obligatorios", "error")
+        return redirect(url_for("tableros.lista"))
+    
+    # Buscar la lista en todos los tableros
+    for tablero in storage.get_all_tableros():
+        lista = tablero.get_lista(lista_id)
+        if lista:
+            lista.agregar_tarjeta(titulo, descripcion, responsable)
+            flash(f"Tarjeta '{titulo}' agregada exitosamente", "success")
+            return redirect(url_for("tableros.ver", tablero_id=tablero.id))
+    
+    flash("Lista no encontrada", "error")
+    return redirect(url_for("tableros.lista"))

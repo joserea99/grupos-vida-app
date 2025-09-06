@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Persona - {{ tarjeta.nombre_completo }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --primary-light: #764ba2;
+            --secondary-color: #f093fb;
+            --accent-color: #4facfe;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --text-light: #9ca3af;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f9fafb;
+            --bg-accent: #f3f4f6;
+            --border-color: #e5e7eb;
+            --border-light: #f3f4f6;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            --radius-2xl: 1.5rem;
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-5: 1.25rem;
+            --space-6: 1.5rem;
+            --space-8: 2rem;
+            --space-10: 2.5rem;
+            --space-12: 3rem;
+            --space-16: 4rem;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: var(--space-6);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: var(--bg-primary);
+            border-radius: var(--radius-2xl);
+            padding: var(--space-8);
+            margin-bottom: var(--space-6);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent-color) 100%);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            font-weight: 700;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .header-text h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-1);
+        }
+
+        .header-text .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: var(--space-3);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-3) var(--space-5);
+            border: none;
+            border-radius: var(--radius-lg);
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border: 2px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+            transform: translateY(-1px);
+        }
+
+        .form-container {
+            background: var(--bg-primary);
+            border-radius: var(--radius-2xl);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+        }
+
+        .form-tabs {
+            display: flex;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab {
+            flex: 1;
+            padding: var(--space-4) var(--space-6);
+            text-align: center;
+            background: none;
+            border: none;
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .tab.active {
+            color: var(--primary-color);
+            background: var(--bg-primary);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent-color) 100%);
+        }
+
+        .tab:hover:not(.active) {
+            background: var(--bg-accent);
+        }
+
+        .tab-content {
+            display: none;
+            padding: var(--space-8);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .section {
+            margin-bottom: var(--space-8);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--space-4);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .section-title .icon {
+            width: 20px;
+            height: 20px;
+            color: var(--primary-color);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: var(--space-4);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .form-label .required {
+            color: var(--error-color);
+        }
+
+        .form-input {
+            padding: var(--space-3) var(--space-4);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            background: var(--bg-primary);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-input:disabled {
+            background: var(--bg-secondary);
+            color: var(--text-light);
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: var(--space-3);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+            pointer-events: none;
+        }
+
+        .input-group .form-input {
+            padding-left: var(--space-10);
+        }
+
+        .pac-container {
+            border-radius: var(--radius-lg);
+            border: none;
+            box-shadow: var(--shadow-xl);
+            margin-top: var(--space-1);
+        }
+
+        .pac-item {
+            padding: var(--space-3) var(--space-4);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .pac-item:hover {
+            background: var(--bg-secondary);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-4);
+            margin-bottom: var(--space-6);
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+            color: white;
+            padding: var(--space-4);
+            border-radius: var(--radius-xl);
+            text-align: center;
+            box-shadow: var(--shadow-md);
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: var(--space-1);
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        .mini-map {
+            height: 300px;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-md);
+            margin-top: var(--space-4);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: var(--space-4);
+            justify-content: flex-end;
+            padding: var(--space-6) var(--space-8);
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .alert {
+            padding: var(--space-4);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--space-4);
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+
+        .alert-success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #86efac;
+        }
+
+        .toast {
+            position: fixed;
+            top: var(--space-4);
+            right: var(--space-4);
+            background: var(--bg-primary);
+            border-radius: var(--radius-lg);
+            padding: var(--space-4);
+            box-shadow: var(--shadow-xl);
+            border-left: 4px solid var(--success-color);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .toast.error {
+            border-left-color: var(--error-color);
+        }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 768px) {
+            body {
+                padding: var(--space-4);
+            }
+
+            .header-content {
+                flex-direction: column;
+                gap: var(--space-4);
+                text-align: center;
+            }
+
+            .form-tabs {
+                flex-direction: column;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-content">
+                <div class="header-info">
+                    <div class="avatar">
+                        {{ tarjeta.nombre[0] if tarjeta.nombre else 'P' }}{{ tarjeta.apellido[0] if tarjeta.apellido else '' }}
+                    </div>
+                    <div class="header-text">
+                        <h1>{{ tarjeta.nombre_completo or tarjeta.titulo }}</h1>
+                        <div class="subtitle">
+                            <i class="fas fa-list"></i>
+                            Lista: {{ lista.nombre }} • Tablero: {{ tablero.nombre }}
+                        </div>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <a href="{{ url_for('tableros.ver', tablero_id=tablero.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i>
+                        Volver al Tablero
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas Rápidas -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">{{ tarjeta.edad or 'N/A' }}</div>
+                <div class="stat-label">Años</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ tarjeta.numero_hijos or 0 }}</div>
+                <div class="stat-label">Hijos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ tarjeta.estado_civil or 'N/A' }}</div>
+                <div class="stat-label">Estado Civil</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">{{ tarjeta.fecha_creacion[:10] if tarjeta.fecha_creacion else 'N/A' }}</div>
+                <div class="stat-label">Registrado</div>
+            </div>
+        </div>
+
+        <!-- Formulario Principal -->
+        <form method="POST" class="form-container">
+            <!-- Tabs de Navegación -->
+            <div class="form-tabs">
+                <button type="button" class="tab active" onclick="switchTab('personal')">
+                    <i class="fas fa-user"></i>
+                    Información Personal
+                </button>
+                <button type="button" class="tab" onclick="switchTab('contacto')">
+                    <i class="fas fa-phone"></i>
+                    Contacto y Ubicación
+                </button>
+                <button type="button" class="tab" onclick="switchTab('familia')">
+                    <i class="fas fa-heart"></i>
+                    Información Familiar
+                </button>
+                <button type="button" class="tab" onclick="switchTab('adicional')">
+                    <i class="fas fa-clipboard"></i>
+                    Información Adicional
+                </button>
+            </div>
+
+            <!-- Tab 1: Información Personal -->
+            <div id="personal" class="tab-content active">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Información Personal Básica</strong><br>
+                        Complete los datos principales de la persona.
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">
+                        <i class="fas fa-user icon"></i>
+                        Datos Básicos
+                    </h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">
+                                Nombre <span class="required">*</span>
+                            </label>
+                            <div class="input-group">
+                                <i class="fas fa-user input-icon"></i>
+                                <input type="text" name="nombre" class="form-input" 
+                                       value="{{ tarjeta.nombre }}" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                Apellido <span class="required">*</span>
+                            </label>
+                            <div class="input-group">
+                                <i class="fas fa-user input-icon"></i>
+                                <input type="text" name="apellido" class="form-input" 
+                                       value="{{ tarjeta.apellido }}" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Edad</label>
+                            <div class="input-group">
+                                <i class="fas fa-birthday-cake input-icon"></i>
+                                <input type="number" name="edad" class="form-input" 
+                                       value="{{ tarjeta.edad }}" min="0" max="120">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Estado Civil</label>
+                            <select name="estado_civil" class="form-input">
+                                <option value="">Seleccionar...</option>
+                                <option value="Soltero" {{ 'selected' if tarjeta.estado_civil == 'Soltero' else '' }}>Soltero(a)</option>
+                                <option value="Casado" {{ 'selected' if tarjeta.estado_civil == 'Casado' else '' }}>Casado(a)</option>
+                                <option value="Divorciado" {{ 'selected' if tarjeta.estado_civil == 'Divorciado' else '' }}>Divorciado(a)</option>
+                                <option value="Viudo" {{ 'selected' if tarjeta.estado_civil == 'Viudo' else '' }}>Viudo(a)</option>
+                                <option value="Unión libre" {{ 'selected' if tarjeta.estado_civil == 'Unión libre' else '' }}>Unión libre</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Ocupación</label>
+                            <div class="input-group">
+                                <i class="fas fa-briefcase input-icon"></i>
+                                <input type="text" name="ocupacion" class="form-input" 
+                                       value="{{ tarjeta.ocupacion }}" 
+                                       placeholder="Ej: Ingeniero, Profesor, Estudiante...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Contacto y Ubicación -->
+            <div id="contacto" class="tab-content">
+                <div class="alert alert-info">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <div>
+                        <strong>🗺️ Autocompletar de Direcciones con Google Places</strong><br>
+                        <span style="font-size: 0.9rem;">
+                            • Escribe una dirección (ej: "123 Main Street") y selecciona de las sugerencias<br>
+                            • Si no aparecen sugerencias, usa el botón "Reiniciar Autocompletar"<br>
+                            • Si sigue sin funcionar, usa "Test" para diagnosticar el problema<br>
+                            • <strong>Nota:</strong> Requiere API key de Google con Places API habilitada
+                        </span>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">
+                        <i class="fas fa-phone icon"></i>
+                        Información de Contacto
+                    </h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Teléfono</label>
+                            <div class="input-group">
+                                <i class="fas fa-phone input-icon"></i>
+                                <input type="tel" name="telefono" class="form-input" 
+                                       value="{{ tarjeta.telefono }}" 
+                                       placeholder="(407) 555-0123">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <div class="input-group">
+                                <i class="fas fa-envelope input-icon"></i>
+                                <input type="email" name="email" class="form-input" 
+                                       value="{{ tarjeta.email }}" 
+                                       placeholder="ejemplo@correo.com">
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Dirección</label>
+                            <div class="input-group" style="position: relative;">
+                                <i class="fas fa-map-marker-alt input-icon"></i>
+                                <input type="text" id="direccionInput" name="direccion" class="form-input" 
+                                       value="{{ tarjeta.direccion }}" 
+                                       placeholder="Comience a escribir la dirección (ej: 123 Main Street, Orlando)...">
+                                <div id="autocompleteStatus" class="autocomplete-status" title="Estado del autocompletar"></div>
+                            </div>
+                            <div class="debug-buttons">
+                                <button type="button" onclick="reinicializarAutocompletar()" class="btn btn-sm btn-secondary">
+                                    <i class="fas fa-refresh"></i> Reiniciar
+                                </button>
+                                <button type="button" onclick="testearAutocompletar()" class="btn btn-sm" style="background: #f59e0b; color: white;">
+                                    <i class="fas fa-bug"></i> Test
+                                </button>
+                                <button type="button" onclick="probarDireccionEjemplo()" class="btn btn-sm" style="background: #10b981; color: white;">
+                                    <i class="fas fa-lightbulb"></i> Ejemplo
+                                </button>
+                            </div>
+                            <div id="miniMap" class="mini-map"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Información Familiar -->
+            <div id="familia" class="tab-content">
+                <div class="alert alert-info">
+                    <i class="fas fa-heart"></i>
+                    <div>
+                        <strong>Información Familiar</strong><br>
+                        Datos sobre la familia y cónyuge de la persona.
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">
+                        <i class="fas fa-child icon"></i>
+                        Información de Hijos
+                    </h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Número de Hijos</label>
+                            <div class="input-group">
+                                <i class="fas fa-child input-icon"></i>
+                                <input type="number" name="numero_hijos" class="form-input" 
+                                       value="{{ tarjeta.numero_hijos or 0 }}" min="0" max="20">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Edades de los Hijos</label>
+                            <div class="input-group">
+                                <i class="fas fa-birthday-cake input-icon"></i>
+                                <input type="text" name="edades_hijos" class="form-input" 
+                                       value="{{ tarjeta.edades_hijos }}" 
+                                       placeholder="Ej: 5, 8, 12">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">
+                        <i class="fas fa-ring icon"></i>
+                        Información del Cónyuge
+                    </h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Nombre del Cónyuge</label>
+                            <div class="input-group">
+                                <i class="fas fa-user input-icon"></i>
+                                <input type="text" name="nombre_conyuge" class="form-input" 
+                                       value="{{ tarjeta.nombre_conyuge }}" 
+                                       placeholder="Nombre completo del cónyuge">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Teléfono del Cónyuge</label>
+                            <div class="input-group">
+                                <i class="fas fa-phone input-icon"></i>
+                                <input type="tel" name="telefono_conyuge" class="form-input" 
+                                       value="{{ tarjeta.telefono_conyuge }}" 
+                                       placeholder="(407) 555-0124">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 4: Información Adicional -->
+            <div id="adicional" class="tab-content">
+                <div class="alert alert-info">
+                    <i class="fas fa-clipboard"></i>
+                    <div>
+                        <strong>Información Adicional</strong><br>
+                        Datos administrativos y notas especiales.
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">
+                        <i class="fas fa-user-tie icon"></i>
+                        Información Administrativa
+                    </h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Responsable</label>
+                            <div class="input-group">
+                                <i class="fas fa-user-tie input-icon"></i>
+                                <input type="text" name="responsable" class="form-input" 
+                                       value="{{ tarjeta.responsable }}" 
+                                       placeholder="Persona a cargo del seguimiento">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Estado</label>
+                            <select name="estado" class="form-input">
+                                <option value="activa" {{ 'selected' if tarjeta.estado == 'activa' else '' }}>Activa</option>
+                                <option value="inactiva" {{ 'selected' if tarjeta.estado == 'inactiva' else '' }}>Inactiva</option>
+                                <option value="visitante" {{ 'selected' if tarjeta.estado == 'visitante' else '' }}>Visitante</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label class="form-label">Notas Especiales</label>
+                            <textarea name="notas" class="form-input" rows="4" 
+                                      placeholder="Información adicional, observaciones, etc.">{{ tarjeta.notas }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">
+                        <i class="fas fa-info-circle icon"></i>
+                        Información del Sistema
+                    </h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Fecha de Creación</label>
+                            <input type="text" class="form-input" 
+                                   value="{{ tarjeta.fecha_creacion[:10] if tarjeta.fecha_creacion else 'N/A' }}" 
+                                   disabled>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">ID de la Persona</label>
+                            <input type="text" class="form-input" 
+                                   value="{{ tarjeta.id }}" 
+                                   disabled>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="form-actions">
+                <a href="{{ url_for('tableros.ver', tablero_id=tablero.id) }}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i>
+                    Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i>
+                    Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Google Maps & Places API con debugging -->
+    <script>
+        // Variables globales
+        let map;
+        let marker;
+        let autocomplete;
+        let infoWindow;
+        let placesService;
+
+        // Función para debugging
+        function debugLog(message) {
+            console.log('🗺️ [Google Maps Debug]:', message);
+        }
+
+        // Verificar si Google Maps está cargado
+        function checkGoogleMapsAPI() {
+            if (typeof google === 'undefined') {
+                console.error('❌ Google Maps API no está cargada');
+                mostrarNotificacion('Error: Google Maps API no disponible', 'error');
+                return false;
+            }
+            
+            if (typeof google.maps === 'undefined') {
+                console.error('❌ Google Maps no está disponible');
+                mostrarNotificacion('Error: Google Maps no disponible', 'error');
+                return false;
+            }
+            
+            if (typeof google.maps.places === 'undefined') {
+                console.error('❌ Google Places API no está disponible');
+                mostrarNotificacion('Error: Google Places API no disponible. Verifica que esté habilitada en tu API key.', 'error');
+                return false;
+            }
+            
+            debugLog('✅ Google Maps y Places API cargadas correctamente');
+            return true;
+        }
+
+        // Inicializar autocompletar independientemente
+        function inicializarAutocompletar() {
+            try {
+                debugLog('Inicializando autocompletar...');
+                
+                const input = document.getElementById('direccionInput');
+                if (!input) {
+                    console.error('❌ No se encontró el input de dirección');
+                    return;
+                }
+
+                // Opciones del autocompletar
+                const options = {
+                    types: ['address'],
+                    componentRestrictions: { 
+                        country: 'us' 
+                    },
+                    fields: ['formatted_address', 'geometry', 'name', 'place_id'],
+                    strictBounds: false
+                };
+
+                debugLog('Creando Autocomplete con opciones:', options);
+                
+                autocomplete = new google.maps.places.Autocomplete(input, options);
+                
+                // Configurar bias hacia Orlando
+                const orlandoBounds = new google.maps.LatLngBounds(
+                    new google.maps.LatLng(28.3, -81.6), // SW
+                    new google.maps.LatLng(28.8, -81.1)  // NE
+                );
+                autocomplete.setBounds(orlandoBounds);
+
+                debugLog('✅ Autocomplete creado exitosamente');
+
+                // Listener para cuando se selecciona una dirección
+                autocomplete.addListener('place_changed', function() {
+                    debugLog('🎯 place_changed event disparado');
+                    
+                    const place = autocomplete.getPlace();
+                    debugLog('Lugar seleccionado:', place);
+                    
+                    if (!place) {
+                        debugLog('❌ No se obtuvo información del lugar');
+                        mostrarNotificacion('No se pudo obtener información del lugar', 'warning');
+                        return;
+                    }
+
+                    if (!place.geometry || !place.geometry.location) {
+                        debugLog('❌ No se encontró ubicación para:', place.name);
+                        mostrarNotificacion('No se pudo encontrar la ubicación para esa dirección', 'error');
+                        return;
+                    }
+
+                    debugLog('✅ Ubicación encontrada:', place.geometry.location.toString());
+
+                    // Actualizar el valor del input con la dirección formateada
+                    if (place.formatted_address) {
+                        input.value = place.formatted_address;
+                        debugLog('📝 Input actualizado con:', place.formatted_address);
+                    }
+
+                    // Actualizar mapa si existe
+                    if (map && marker) {
+                        const location = place.geometry.location;
+                        map.setCenter(location);
+                        map.setZoom(16);
+                        
+                        marker.setPosition(location);
+                        marker.setAnimation(google.maps.Animation.BOUNCE);
+                        setTimeout(() => marker.setAnimation(null), 1500);
+
+                        // Actualizar InfoWindow
+                        const infoContent = `
+                            <div style="padding: 12px; max-width: 250px; font-family: Inter, sans-serif;">
+                                <h4 style="margin: 0 0 8px 0; color: #1f2937;">{{ tarjeta.nombre_completo }}</h4>
+                                <p style="margin: 0; color: #6b7280; font-size: 13px; line-height: 1.4;">
+                                    📍 ${place.formatted_address}
+                                </p>
+                            </div>
+                        `;
+                        infoWindow.setContent(infoContent);
+
+                        debugLog('🗺️ Mapa actualizado');
+                    }
+
+                    mostrarNotificacion('✅ Ubicación actualizada correctamente', 'success');
+                });
+
+                // Agregar eventos adicionales para debugging
+                input.addEventListener('focus', function() {
+                    debugLog('📝 Input de dirección enfocado');
+                });
+
+                input.addEventListener('input', function() {
+                    debugLog('📝 Usuario escribiendo:', this.value);
+                });
+
+                debugLog('✅ Event listeners agregados');
+
+            } catch (error) {
+                console.error('❌ Error inicializando autocompletar:', error);
+                actualizarIndicadorEstado(false);
+                mostrarNotificacion('Error inicializando autocompletar: ' + error.message, 'error');
+            }
+        }
+
+        // Inicializar mapa
+        function inicializarMapa() {
+            try {
+                debugLog('Inicializando mapa...');
+                
+                const defaultLocation = { lat: 28.5383, lng: -81.3792 };
+                
+                map = new google.maps.Map(document.getElementById('miniMap'), {
+                    zoom: 13,
+                    center: defaultLocation,
+                    styles: [
+                        {
+                            "featureType": "all",
+                            "elementType": "geometry.fill",
+                            "stylers": [{"weight": "2.00"}]
+                        },
+                        {
+                            "featureType": "all",
+                            "elementType": "geometry.stroke",
+                            "stylers": [{"color": "#9c9c9c"}]
+                        },
+                        {
+                            "featureType": "landscape",
+                            "elementType": "all",
+                            "stylers": [{"color": "#f2f2f2"}]
+                        },
+                        {
+                            "featureType": "poi",
+                            "elementType": "all",
+                            "stylers": [{"visibility": "off"}]
+                        },
+                        {
+                            "featureType": "road",
+                            "elementType": "all",
+                            "stylers": [{"saturation": -100}, {"lightness": 45}]
+                        },
+                        {
+                            "featureType": "transit",
+                            "elementType": "all",
+                            "stylers": [{"visibility": "off"}]
+                        },
+                        {
+                            "featureType": "water",
+                            "elementType": "all",
+                            "stylers": [{"color": "#46bcec"}, {"visibility": "on"}]
+                        }
+                    ]
+                });
+
+                // Marcador personalizado
+                marker = new google.maps.Marker({
+                    position: defaultLocation,
+                    map: map,
+                    title: 'Ubicación de {{ tarjeta.nombre_completo }}',
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 12,
+                        fillColor: '#667eea',
+                        fillOpacity: 0.8,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 3
+                    },
+                    animation: google.maps.Animation.DROP
+                });
+
+                // InfoWindow
+                infoWindow = new google.maps.InfoWindow();
+
+                marker.addListener('click', () => {
+                    infoWindow.open(map, marker);
+                });
+
+                debugLog('✅ Mapa inicializado correctamente');
+
+                // Si ya hay una dirección, geocodificarla
+                const direccionActual = '{{ tarjeta.direccion }}';
+                if (direccionActual.trim()) {
+                    debugLog('📍 Geocodificando dirección actual:', direccionActual);
+                    geocodificarDireccion(direccionActual);
+                }
+
+            } catch (error) {
+                console.error('❌ Error inicializando mapa:', error);
+                mostrarNotificacion('Error inicializando mapa: ' + error.message, 'error');
+            }
+        }
+
+        function geocodificarDireccion(direccion) {
+            try {
+                debugLog('🔍 Geocodificando:', direccion);
+                
+                const geocoder = new google.maps.Geocoder();
+                
+                geocoder.geocode({ 
+                    address: direccion + ', Orlando, FL',
+                    region: 'US'
+                }, (results, status) => {
+                    debugLog('Resultado geocoding:', status, results);
+                    
+                    if (status === 'OK' && results[0]) {
+                        const location = results[0].geometry.location;
+                        map.setCenter(location);
+                        map.setZoom(15);
+                        marker.setPosition(location);
+                        
+                        const infoContent = `
+                            <div style="padding: 12px; max-width: 250px;">
+                                <h4 style="margin: 0 0 8px 0;">{{ tarjeta.nombre_completo }}</h4>
+                                <p style="margin: 0; color: #666; font-size: 13px;">📍 ${direccion}</p>
+                            </div>
+                        `;
+                        infoWindow.setContent(infoContent);
+                        
+                        debugLog('✅ Dirección geocodificada exitosamente');
+                    } else {
+                        debugLog('❌ Error geocodificando:', status);
+                    }
+                });
+                
+            } catch (error) {
+                console.error('❌ Error en geocodificación:', error);
+            }
+        }
+
+        // Función principal de inicialización
+        function initMap() {
+            debugLog('🚀 Iniciando initMap...');
+            
+            if (!checkGoogleMapsAPI()) {
+                // Retry después de un tiempo
+                setTimeout(() => {
+                    debugLog('🔄 Reintentando inicialización...');
+                    initMap();
+                }, 2000);
+                return;
+            }
+
+            inicializarMapa();
+            inicializarAutocompletar();
+            
+            debugLog('🎉 Inicialización completa');
+        }
+
+        // Fallback: Inicializar autocompletar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', function() {
+            debugLog('📄 DOM cargado');
+            
+            // Inicializar indicador como inactivo
+            actualizarIndicadorEstado(false);
+            
+            // Si Google Maps ya está disponible, inicializar inmediatamente
+            if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+                debugLog('🚀 Google Maps ya disponible, inicializando...');
+                setTimeout(initMap, 500);
+            } else {
+                debugLog('⏳ Esperando Google Maps API...');
+            }
+        });
+
+        // Función para testear el autocompletar
+        function testearAutocompletar() {
+            debugLog('🧪 Iniciando test de autocompletar...');
+            
+            const resultados = [];
+            
+            // 1. Verificar Google Maps API
+            if (typeof google === 'undefined') {
+                resultados.push('❌ Google Maps API no cargada');
+            } else {
+                resultados.push('✅ Google Maps API cargada');
+            }
+            
+            // 2. Verificar Places API
+            if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+                resultados.push('✅ Google Places API disponible');
+            } else {
+                resultados.push('❌ Google Places API no disponible');
+            }
+            
+            // 3. Verificar elemento de input
+            const input = document.getElementById('direccionInput');
+            if (input) {
+                resultados.push('✅ Input de dirección encontrado');
+            } else {
+                resultados.push('❌ Input de dirección no encontrado');
+            }
+            
+            // 4. Verificar instancia de autocompletar
+            if (autocomplete) {
+                resultados.push('✅ Autocomplete inicializado');
+            } else {
+                resultados.push('❌ Autocomplete no inicializado');
+            }
+            
+            // 5. Verificar mapa
+            if (map) {
+                resultados.push('✅ Mapa inicializado');
+            } else {
+                resultados.push('❌ Mapa no inicializado');
+            }
+            
+            // Mostrar resultados
+            const mensaje = resultados.join('\n');
+            console.log('🧪 Resultados del test:\n' + mensaje);
+            
+            // Crear modal con resultados
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                font-family: 'Courier New', monospace;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    padding: 24px;
+                    border-radius: 12px;
+                    max-width: 500px;
+                    width: 90%;
+                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+                ">
+                    <h3 style="margin: 0 0 16px 0; color: #1f2937;">🧪 Diagnóstico de Autocompletar</h3>
+                    <div style="
+                        background: #f9fafb;
+                        padding: 16px;
+                        border-radius: 8px;
+                        white-space: pre-line;
+                        font-size: 14px;
+                        line-height: 1.6;
+                        margin-bottom: 16px;
+                    ">${mensaje}</div>
+                    <div style="
+                        margin-bottom: 16px;
+                        padding: 12px;
+                        background: #fef3c7;
+                        border-radius: 6px;
+                        font-size: 13px;
+                        color: #92400e;
+                    ">
+                        <strong>💡 Si ves errores:</strong><br>
+                        1. Verifica tu API key de Google<br>
+                        2. Asegúrate de habilitar Places API<br>
+                        3. Revisa la consola (F12) para más detalles
+                    </div>
+                    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                        <button onclick="this.closest('div').parentElement.remove()" style="
+                            background: #6b7280;
+                            color: white;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                        ">Cerrar</button>
+                        <button onclick="window.open('https://console.cloud.google.com/google/maps-apis/overview', '_blank')" style="
+                            background: #3b82f6;
+                            color: white;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 6px;
+                            cursor: pointer;
+                        ">Google Cloud Console</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Cerrar modal al hacer clic fuera
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
+        // Función para actualizar el indicador de estado
+        function actualizarIndicadorEstado(activo) {
+            const indicator = document.getElementById('autocompleteStatus');
+            if (indicator) {
+                if (activo) {
+                    indicator.classList.add('active');
+                    indicator.title = 'Autocompletar activo ✅';
+                } else {
+                    indicator.classList.remove('active');
+                    indicator.title = 'Autocompletar inactivo ❌';
+                }
+            }
+        }
+
+        // Función para probar con una dirección de ejemplo
+        function probarDireccionEjemplo() {
+            const input = document.getElementById('direccionInput');
+            if (input) {
+                const ejemplos = [
+                    '123 Main Street, Orlando, FL',
+                    '456 Orange Avenue, Orlando, FL',
+                    '789 Church Street, Orlando, FL',
+                    '321 Colonial Drive, Orlando, FL'
+                ];
+                
+                const ejemplo = ejemplos[Math.floor(Math.random() * ejemplos.length)];
+                input.value = ejemplo;
+                input.focus();
+                
+                // Simular input event para activar el autocompletar
+                const event = new Event('input', { bubbles: true });
+                input.dispatchEvent(event);
+                
+                debugLog('📝 Dirección de ejemplo insertada:', ejemplo);
+                mostrarNotificacion('Dirección de ejemplo insertada. Presiona una tecla para ver sugerencias.', 'success');
+            }
+        }
+
+        // Función para reintentar manualmente
+        function reinicializarAutocompletar() {
+            debugLog('🔄 Reinicializando autocompletar manualmente...');
+            
+            if (checkGoogleMapsAPI()) {
+                // Limpiar instancia anterior si existe
+                if (autocomplete) {
+                    google.maps.event.clearInstanceListeners(autocomplete);
+                    autocomplete = null;
+                }
+                
+                actualizarIndicadorEstado(false);
+                inicializarAutocompletar();
+                mostrarNotificacion('Autocompletar reinicializado correctamente', 'success');
+            } else {
+                actualizarIndicadorEstado(false);
+                mostrarNotificacion('Error: Google Maps API no disponible', 'error');
+            }
+        }
+            debugLog('🔄 Reinicializando autocompletar manualmente...');
+            
+            if (checkGoogleMapsAPI()) {
+                // Limpiar instancia anterior si existe
+                if (autocomplete) {
+                    google.maps.event.clearInstanceListeners(autocomplete);
+                    autocomplete = null;
+                }
+                
+                inicializarAutocompletar();
+                mostrarNotificacion('Autocompletar reinicializado correctamente', 'success');
+            } else {
+                mostrarNotificacion('Error: Google Maps API no disponible', 'error');
+            }
+        }
+    </script>
+
+    <!-- Script de Google Maps con retry -->
+    <script>
+        // Función global para manejar errores de carga
+        window.gm_authFailure = function() {
+            console.error('❌ Google Maps API Authentication Failed');
+            mostrarNotificacion('Error de autenticación con Google Maps. Verifica tu API key.', 'error');
+        };
+
+        // Cargar Google Maps API
+        function loadGoogleMapsAPI() {
+            debugLog('📦 Cargando Google Maps API...');
+            
+            const script = document.createElement('script');
+            script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyAM44jyxplaDzn1m7bJ79RtQGCmzYNuOCg&libraries=places&callback=initMap';
+            script.async = true;
+            script.defer = true;
+            
+            script.onerror = function() {
+                console.error('❌ Error cargando Google Maps API');
+                mostrarNotificacion('Error cargando Google Maps. Verifica tu conexión.', 'error');
+            };
+            
+            document.head.appendChild(script);
+        }
+
+        // Cargar API cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadGoogleMapsAPI);
+        } else {
+            loadGoogleMapsAPI();
+        }
+
+        // Establecer función global para callback
+        window.initMap = initMap;
+    </script>
+
+        // Navegación entre tabs
+        function switchTab(tabName) {
+            // Remover clase active de todos los tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // Activar tab seleccionado
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        // Notificaciones
+        function mostrarNotificacion(mensaje, tipo = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${tipo}`;
+            toast.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-${tipo === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                    <span>${mensaje}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Validación del formulario
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const nombre = document.querySelector('[name="nombre"]').value.trim();
+            const apellido = document.querySelector('[name="apellido"]').value.trim();
+            
+            if (!nombre || !apellido) {
+                e.preventDefault();
+                mostrarNotificacion('El nombre y apellido son requeridos', 'error');
+                
+                // Cambiar a la tab de información personal
+                switchTab('personal');
+                return;
+            }
+
+            mostrarNotificacion('Guardando cambios...', 'success');
+        });
+
+        // Inicialización
+        window.initMap = initMap;
+    </script>
+</body>
+</html>

@@ -1,0 +1,222 @@
+from flask import Blueprint, flash, redirect, render_template, session, url_for
+
+tableros_bp = Blueprint("tableros", __name__)
+
+# Datos de plantillas - estructura corregida para el template
+PLANTILLAS_EJEMPLO = {
+    "direccion_adultos": {
+        "liderazgo-1": {
+            "nombre": "Reunión de Líderes",
+            "descripcion": "Template para reuniones de liderazgo ministerial",
+            "icono": "👥",
+            "listas": ["Agenda", "Decisiones", "Seguimiento"],
+        },
+        "planificacion-1": {
+            "nombre": "Planificación Anual",
+            "descripcion": "Template para planificación estratégica",
+            "icono": "📋",
+            "listas": ["Objetivos", "Recursos", "Cronograma"],
+        },
+    },
+    "familia": {
+        "actividades-fam-1": {
+            "nombre": "Actividades Familiares",
+            "descripcion": "Template para eventos y actividades familiares",
+            "icono": "👨‍👩‍👧‍👦",
+            "listas": ["Planificación", "Participantes", "Recursos"],
+        },
+        "crecimiento-fam-1": {
+            "nombre": "Crecimiento Familiar",
+            "descripcion": "Template para seguimiento del crecimiento familiar",
+            "icono": "🌱",
+            "listas": ["Metas", "Progreso", "Reflexiones"],
+        },
+    },
+    "estudiantes": {
+        "juventud-1": {
+            "nombre": "Grupo Juvenil",
+            "descripcion": "Template para actividades y proyectos juveniles",
+            "icono": "🎓",
+            "listas": ["Actividades", "Participantes", "Recursos"],
+        },
+        "estudios-1": {
+            "nombre": "Estudios Bíblicos",
+            "descripcion": "Template para organizar estudios bíblicos",
+            "icono": "📖",
+            "listas": ["Temas", "Materiales", "Participantes"],
+        },
+    },
+    "crecimiento": {
+        "personal-1": {
+            "nombre": "Crecimiento Personal",
+            "descripcion": "Template para desarrollo personal y espiritual",
+            "icono": "🚀",
+            "listas": ["Metas", "Hábitos", "Reflexiones"],
+        },
+        "espiritual-1": {
+            "nombre": "Metas Espirituales",
+            "descripcion": "Template para el crecimiento espiritual",
+            "icono": "🙏",
+            "listas": ["Objetivos", "Prácticas", "Progreso"],
+        },
+    },
+    "servicio": {
+        "comunitario-1": {
+            "nombre": "Proyectos de Servicio",
+            "descripcion": "Template para proyectos de servicio comunitario",
+            "icono": "🤝",
+            "listas": ["Planificación", "Voluntarios", "Impacto"],
+        },
+        "ministerios-1": {
+            "nombre": "Ministerios",
+            "descripcion": "Template para gestionar diferentes ministerios",
+            "icono": "⛪",
+            "listas": ["Actividades", "Miembros", "Recursos"],
+        },
+    },
+}
+
+
+@tableros_bp.route("/")
+def lista():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    tableros = []
+    stats = {
+        "total_tableros": 0,
+        "total_personas": 0,
+        "total_listas": 0,
+        "tableros_activos": 0,
+    }
+    return render_template("tableros/lista.html", tableros=tableros, stats=stats)
+
+
+@tableros_bp.route("/<int:tablero_id>")
+def ver(tablero_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    tablero = {"id": tablero_id, "nombre": "Tablero de Prueba", "icono": "📋"}
+    listas = []
+    usuario = {"username": session.get("username")}
+    return render_template(
+        "tableros/ver.html", tablero=tablero, listas=listas, usuario=usuario
+    )
+
+
+@tableros_bp.route("/crear")
+def crear():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    return render_template("tableros/crear.html", plantillas=PLANTILLAS_EJEMPLO)
+
+
+@tableros_bp.route("/editar/<int:tablero_id>")
+def editar(tablero_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    return render_template("tableros/editar.html", tablero_id=tablero_id)
+
+
+@tableros_bp.route("/procesar", methods=["POST"])
+def procesar():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    # Por ahora redirigir a lista - puedes implementar la lógica después
+    flash("Tablero procesado (placeholder)", "success")
+    return redirect(url_for("tableros.lista"))
+
+
+@tableros_bp.route("/plantillas")
+def plantillas():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    return render_template("tableros/plantillas.html", plantillas=PLANTILLAS_EJEMPLO)
+
+
+@tableros_bp.route("/descargar/<formato>")
+def descargar_datos(formato):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    # Placeholder - implementar lógica después
+    flash(f"Descarga {formato} (placeholder)", "info")
+    return redirect(url_for("tableros.lista"))
+
+
+@tableros_bp.route("/descargar_plantilla")
+def descargar_plantilla_excel():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    # Placeholder - implementar lógica después
+    flash("Descarga plantilla Excel (placeholder)", "info")
+    return redirect(url_for("tableros.lista"))
+
+
+@tableros_bp.route("/importar/<int:lista_id>")
+def importar_excel(lista_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    # Placeholder
+    flash("Importar Excel (placeholder)", "info")
+    return redirect(url_for("tableros.lista"))
+
+
+@tableros_bp.route("/editar_lista/<int:lista_id>")
+def editar_lista(lista_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    # Placeholder
+    flash("Editar lista (placeholder)", "info")
+    return redirect(url_for("tableros.lista"))
+
+
+@tableros_bp.route("/agregar_tarjeta/<int:lista_id>", methods=["POST"])
+def agregar_tarjeta(lista_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    # Placeholder
+    flash("Tarjeta agregada (placeholder)", "info")
+    return redirect(url_for("tableros.lista"))
+
+
+@tableros_bp.route("/editar_tarjeta/<int:lista_id>/<int:tarjeta_id>")
+def editar_tarjeta(lista_id, tarjeta_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    # Placeholder
+    flash("Editar tarjeta (placeholder)", "info")
+    return redirect(url_for("tableros.lista"))
+
+
+@tableros_bp.route("/eliminar_tarjeta/<int:lista_id>/<int:tarjeta_id>")
+def eliminar_tarjeta(lista_id, tarjeta_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    # Placeholder
+    flash("Tarjeta eliminada (placeholder)", "info")
+    return redirect(url_for("tableros.lista"))
+
+
+@tableros_bp.route("/crear_desde_plantilla/<plantilla_id>")
+def crear_desde_plantilla(plantilla_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    # Buscar la plantilla por ID en todas las categorías
+    plantilla_encontrada = None
+    categoria_encontrada = None
+
+    for categoria_key, categoria in PLANTILLAS_EJEMPLO.items():
+        if plantilla_id in categoria:
+            plantilla_encontrada = categoria[plantilla_id]
+            categoria_encontrada = categoria_key
+            break
+
+    if not plantilla_encontrada:
+        flash("Plantilla no encontrada", "error")
+        return redirect(url_for("tableros.plantillas"))
+
+    # Por ahora, redirigir a crear con la plantilla seleccionada
+    flash(f'Creando tablero desde plantilla: {plantilla_encontrada["nombre"]}', "info")
+    return redirect(url_for("tableros.crear"))

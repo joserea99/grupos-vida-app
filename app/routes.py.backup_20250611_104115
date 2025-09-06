@@ -1,0 +1,230 @@
+from flask import Blueprint, render_template, session, redirect, url_for, flash, request, jsonify
+from app.models import storage
+
+tableros_bp = Blueprint("tableros", __name__)
+
+# Datos de plantillas (mantenemos las plantillas)
+PLANTILLAS_EJEMPLO = {
+    "direccion_adultos": {
+        "liderazgo-1": {
+            "nombre": "Reunión de Líderes",
+            "descripcion": "Template para reuniones de liderazgo ministerial",
+            "icono": "👥",
+            "listas": ["Agenda", "Decisiones", "Seguimiento"],
+        },
+        "planificacion-1": {
+            "nombre": "Planificación Anual",
+            "descripcion": "Template para planificación estratégica",
+            "icono": "📋",
+            "listas": ["Objetivos", "Recursos", "Cronograma"],
+        },
+    },
+    "familia": {
+        "actividades-fam-1": {
+            "nombre": "Actividades Familiares",
+            "descripcion": "Template para eventos y actividades familiares",
+            "icono": "👨‍👩‍👧‍👦",
+            "listas": ["Planificación", "Participantes", "Recursos"],
+        },
+        "crecimiento-fam-1": {
+            "nombre": "Crecimiento Familiar",
+            "descripcion": "Template para seguimiento del crecimiento familiar",
+            "icono": "🌱",
+            "listas": ["Metas", "Progreso", "Reflexiones"],
+        },
+    },
+    "estudiantes": {
+        "juventud-1": {
+            "nombre": "Grupo Juvenil",
+            "descripcion": "Template para actividades y proyectos juveniles",
+            "icono": "🎓",
+            "listas": ["Actividades", "Participantes", "Recursos"],
+        },
+        "estudios-1": {
+            "nombre": "Estudios Bíblicos",
+            "descripcion": "Template para organizar estudios bíblicos",
+            "icono": "📖",
+            "listas": ["Temas", "Materiales", "Participantes"],
+        },
+    },
+    "crecimiento": {
+        "personal-1": {
+            "nombre": "Crecimiento Personal",
+            "descripcion": "Template para desarrollo personal y espiritual",
+            "icono": "🚀",
+            "listas": ["Metas", "Hábitos", "Reflexiones"],
+        },
+        "espiritual-1": {
+            "nombre": "Metas Espirituales",
+            "descripcion": "Template para el crecimiento espiritual",
+            "icono": "🙏",
+            "listas": ["Objetivos", "Prácticas", "Progreso"],
+        },
+    },
+    "servicio": {
+        "comunitario-1": {
+            "nombre": "Proyectos de Servicio",
+            "descripcion": "Template para proyectos de servicio comunitario",
+            "icono": "🤝",
+            "listas": ["Planificación", "Voluntarios", "Impacto"],
+        },
+        "ministerios-1": {
+            "nombre": "Ministerios",
+            "descripcion": "Template para gestionar diferentes ministerios",
+            "icono": "⛪",
+            "listas": ["Actividades", "Miembros", "Recursos"],
+        },
+    },
+}
+
+
+@tableros_bp.route("/")
+def lista():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    # Obtener tableros reales del storage
+    tableros = [t.to_dict() for t in storage.get_all_tableros()]
+    stats = storage.get_stats()
+    
+    return render_template("tableros/lista.html", tableros=tableros, stats=stats)
+
+
+@tableros_bp.route("/<tablero_id>")
+def ver(tablero_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    tablero = storage.get_tablero(tablero_id)
+    if not tablero:
+        flash("Tablero no encontrado", "error")
+        return redirect(url_for("tableros.lista"))
+
+    tablero_dict = tablero.to_dict()
+    listas = tablero_dict['listas']
+    usuario = {"username": session.get("username")}
+    
+    return render_template("tableros/ver.html", tablero=tablero_dict, listas=listas, usuario=usuario)
+
+
+@tableros_bp.route("/crear")
+def crear():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    return render_template("tableros/crear.html", plantillas=PLANTILLAS_EJEMPLO)
+
+
+@tableros_bp.route("/procesar", methods=["POST"])
+def procesar():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    # Obtener datos del formulario
+    nombre = request.form.get("nombre", "").strip()
+    descripcion = request.form.get("descripcion", "").strip()
+    icono = request.form.get("icono", "📋").strip()
+    
+    if not nombre:
+        flash("El nombre del tablero es obligatorio", "error")
+        return redirect(url_for("tableros.crear"))
+
+    # Crear tablero real
+    tablero = storage.crear_tablero(
+        nombre=nombre,
+        descripcion=descripcion,
+        icono=icono,
+        creador_id=session.get("user_id")
+    )
+    
+    # Agregar listas iniciales si se especificaron
+    listas_nombres = request.form.getlist("listas[]")
+    for lista_nombre in listas_nombres:
+        if lista_nombre.strip():
+            tablero.agregar_lista(lista_nombre.strip())
+    
+    flash(f"¡Tablero '{nombre}' creado exitosamente!", "success")
+    return redirect(url_for("tableros.ver", tablero_id=tablero.id))
+
+
+@tableros_bp.route("/plantillas")
+def plantillas():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    return render_template("tableros/plantillas.html", plantillas=PLANTILLAS_EJEMPLO)
+
+
+@tableros_bp.route("/crear_desde_plantilla/<plantilla_id>")
+def crear_desde_plantilla(plantilla_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    # Buscar la plantilla
+    plantilla_encontrada = None
+    for categoria_key, categoria in PLANTILLAS_EJEMPLO.items():
+        if plantilla_id in categoria:
+            plantilla_encontrada = categoria[plantilla_id]
+            break
+
+    if not plantilla_encontrada:
+        flash("Plantilla no encontrada", "error")
+        return redirect(url_for("tableros.plantillas"))
+
+    # Crear tablero desde plantilla
+    tablero = storage.crear_tablero(
+        nombre=plantilla_encontrada["nombre"],
+        descripcion=plantilla_encontrada["descripcion"],
+        icono=plantilla_encontrada["icono"],
+        creador_id=session.get("user_id")
+    )
+    
+    # Agregar listas de la plantilla
+    for lista_nombre in plantilla_encontrada["listas"]:
+        tablero.agregar_lista(lista_nombre)
+    
+    flash(f"¡Tablero creado desde plantilla: {plantilla_encontrada['nombre']}!", "success")
+    return redirect(url_for("tableros.ver", tablero_id=tablero.id))
+
+
+# RUTAS COMPATIBLES CON TEMPLATES (placeholders)
+@tableros_bp.route("/agregar_tarjeta", methods=["POST"])
+def agregar_tarjeta_template():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    flash("Agregar tarjeta (funcionalidad próximamente)", "info")
+    return redirect(url_for("tableros.lista"))
+
+
+@tableros_bp.route("/agregar_lista", methods=["POST"]) 
+def agregar_lista_template():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    flash("Agregar lista (funcionalidad próximamente)", "info")
+    return redirect(url_for("tableros.lista"))
+
+
+# RUTAS PLACEHOLDER ADICIONALES
+@tableros_bp.route("/editar/<tablero_id>")
+def editar(tablero_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    tablero = storage.get_tablero(tablero_id)
+    if not tablero:
+        flash("Tablero no encontrado", "error")
+        return redirect(url_for("tableros.lista"))
+    return render_template("tableros/editar.html", tablero=tablero.to_dict())
+
+
+@tableros_bp.route("/descargar/<formato>")
+def descargar_datos(formato):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    flash(f"Descarga {formato} (funcionalidad próximamente)", "info")
+    return redirect(url_for("tableros.lista"))
+
+
+@tableros_bp.route("/descargar_plantilla")
+def descargar_plantilla_excel():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    flash("Descarga plantilla Excel (funcionalidad próximamente)", "info")
+    return redirect(url_for("tableros.lista"))

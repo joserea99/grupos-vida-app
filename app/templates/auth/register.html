@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro - Organizador de Grupos de Vida</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px 0;
+        }
+        
+        .auth-container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        
+        .auth-header {
+            margin-bottom: 30px;
+        }
+        
+        .auth-header h1 {
+            color: #1976d2;
+            margin: 0 0 10px 0;
+            font-size: 26px;
+        }
+        
+        .auth-header p {
+            color: #666;
+            margin: 0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #1976d2;
+            box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+        }
+        
+        .form-group small {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+            display: block;
+        }
+        
+        .required {
+            color: #f44336;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: #1976d2;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+        
+        .btn:hover {
+            background: #1565c0;
+            transform: translateY(-2px);
+        }
+        
+        .auth-links {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .auth-links a {
+            color: #1976d2;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .auth-links a:hover {
+            text-decoration: underline;
+        }
+        
+        .alert {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .alert-error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            color: #c62828;
+        }
+        
+        .alert-success {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            color: #2e7d32;
+        }
+        
+        .password-requirements {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .password-requirements h4 {
+            margin: 0 0 10px 0;
+            color: #1976d2;
+            font-size: 14px;
+        }
+        
+        .password-requirements ul {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .ministry-info {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: left;
+        }
+        
+        .ministry-info h3 {
+            color: #1976d2;
+            margin: 0 0 15px 0;
+            font-size: 16px;
+        }
+        
+        .ministry-info p {
+            margin: 0;
+            color: #555;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        @media (max-width: 480px) {
+            .auth-container {
+                margin: 10px;
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-header">
+            <h1>🙏 Organizador de Grupos de Vida</h1>
+            <p>Crea tu cuenta para comenzar tu ministerio digital</p>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'error' if category == 'error' else 'success' }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <form method="post" id="registerForm">
+            <div class="form-group">
+                <label for="nombre_completo">Nombre Completo <span class="required">*</span></label>
+                <input type="text" id="nombre_completo" name="nombre_completo" required 
+                       placeholder="Tu nombre completo">
+                <small>Como aparecerá en el sistema</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="username">Usuario <span class="required">*</span></label>
+                <input type="text" id="username" name="username" required 
+                       placeholder="Nombre de usuario único">
+                <small>Solo letras, números y guiones bajos</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email <span class="required">*</span></label>
+                <input type="email" id="email" name="email" required 
+                       placeholder="tu@email.com">
+                <small>Para recuperar contraseña y notificaciones</small>
+            </div>
+            
+            <div class="password-requirements">
+                <h4>📋 Requisitos de contraseña:</h4>
+                <ul>
+                    <li>Mínimo 6 caracteres</li>
+                    <li>Se recomienda incluir números y símbolos</li>
+                    <li>Evita información personal obvia</li>
+                </ul>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Contraseña <span class="required">*</span></label>
+                <input type="password" id="password" name="password" required 
+                       placeholder="Contraseña segura" minlength="6">
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">Confirmar Contraseña <span class="required">*</span></label>
+                <input type="password" id="confirm_password" name="confirm_password" required 
+                       placeholder="Repite tu contraseña">
+            </div>
+            
+            <button type="submit" class="btn">✨ Crear Mi Cuenta</button>
+        </form>
+        
+        <div class="auth-links">
+            <p>¿Ya tienes cuenta? <a href="{{ url_for('auth.login') }}">Inicia sesión aquí</a></p>
+        </div>
+        
+        <div class="ministry-info">
+            <h3>🌟 ¿Qué puedes hacer con esta herramienta?</h3>
+            <p>
+                Organiza y gestiona la información de los miembros de tu grupo de vida, 
+                mantén un seguimiento de visitantes, nuevos convertidos y miembros activos. 
+                Visualiza ubicaciones en el mapa para planificar visitas y eventos.
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        // Validación en tiempo real
+        const form = document.getElementById('registerForm');
+        const password = document.getElementById('password');
+        const confirmPassword = document.getElementById('confirm_password');
+        const username = document.getElementById('username');
+        
+        // Validar que las contraseñas coincidan
+        confirmPassword.addEventListener('input', function() {
+            if (password.value !== confirmPassword.value) {
+                confirmPassword.setCustomValidity('Las contraseñas no coinciden');
+                confirmPassword.style.borderColor = '#f44336';
+            } else {
+                confirmPassword.setCustomValidity('');
+                confirmPassword.style.borderColor = '#4caf50';
+            }
+        });
+        
+        // Validar usuario (solo letras, números y guiones bajos)
+        username.addEventListener('input', function() {
+            const validPattern = /^[a-zA-Z0-9_]+$/;
+            if (!validPattern.test(this.value) && this.value !== '') {
+                this.setCustomValidity('Solo letras, números y guiones bajos');
+                this.style.borderColor = '#f44336';
+            } else {
+                this.setCustomValidity('');
+                this.style.borderColor = this.value ? '#4caf50' : '#e0e0e0';
+            }
+        });
+        
+        // Indicador de fuerza de contraseña
+        password.addEventListener('input', function() {
+            const strength = getPasswordStrength(this.value);
+            updatePasswordIndicator(strength);
+        });
+        
+        function getPasswordStrength(password) {
+            let strength = 0;
+            if (password.length >= 6) strength++;
+            if (password.length >= 8) strength++;
+            if (/[A-Z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[^A-Za-z0-9]/.test(password)) strength++;
+            return strength;
+        }
+        
+        function updatePasswordIndicator(strength) {
+            const password = document.getElementById('password');
+            if (strength < 2) {
+                password.style.borderColor = '#f44336';
+            } else if (strength < 4) {
+                password.style.borderColor = '#ff9800';
+            } else {
+                password.style.borderColor = '#4caf50';
+            }
+        }
+        
+        // Auto-focus
+        document.getElementById('nombre_completo').focus();
+    </script>
+</body>
+</html>

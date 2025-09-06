@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ tablero.nombre if tablero else 'Gestión de Personas' }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- SortableJS para drag & drop -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --primary-light: #764ba2;
+            --secondary-color: #f093fb;
+            --accent-color: #4facfe;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --text-light: #9ca3af;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f9fafb;
+            --bg-dark: #111827;
+            --border-color: #e5e7eb;
+            --border-light: #f3f4f6;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            --radius-2xl: 1.5rem;
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-5: 1.25rem;
+            --space-6: 1.5rem;
+            --space-8: 2rem;
+            --space-10: 2.5rem;
+            --space-12: 3rem;
+            --space-16: 4rem;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* === HEADER === */
+        .header {
+            background: var(--bg-primary);
+            box-shadow: var(--shadow-sm);
+            padding: var(--space-4) 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 var(--space-6);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: var(--space-3);
+            align-items: center;
+        }
+
+        /* === MAIN CONTAINER === */
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: var(--space-6);
+        }
+
+        /* === CONTROLS === */
+        .controls-section {
+            background: var(--bg-primary);
+            border-radius: var(--radius-2xl);
+            padding: var(--space-6);
+            margin-bottom: var(--space-6);
+            box-shadow: var(--shadow-md);
+        }
+
+        .controls-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-4);
+        }
+
+        .controls-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .search-filters {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: var(--space-4);
+            margin-bottom: var(--space-4);
+        }
+
+        .search-input {
+            position: relative;
+        }
+
+        .search-input input {
+            width: 100%;
+            padding: var(--space-3) var(--space-4) var(--space-3) var(--space-10);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+        .search-input input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-input .search-icon {
+            position: absolute;
+            left: var(--space-3);
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+        }
+
+        .filter-select select {
+            width: 100%;
+            padding: var(--space-3) var(--space-4);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            font-size: 0.95rem;
+            background: var(--bg-primary);
+            transition: all 0.2s ease;
+        }
+
+        .filter-select select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .stats-row {
+            display: flex;
+            gap: var(--space-4);
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+            color: white;
+            padding: var(--space-4);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            flex: 1;
+        }
+
+        .stat-number {
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: var(--space-1);
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        /* === KANBAN BOARD === */
+        .kanban-container {
+            display: flex;
+            gap: var(--space-6);
+            overflow-x: auto;
+            padding-bottom: var(--space-4);
+            margin-bottom: var(--space-8);
+        }
+
+        .kanban-list {
+            background: var(--bg-primary);
+            border-radius: var(--radius-2xl);
+            min-width: 350px;
+            max-width: 350px;
+            box-shadow: var(--shadow-md);
+            display: flex;
+            flex-direction: column;
+            max-height: 80vh;
+        }
+
+        .list-header {
+            padding: var(--space-5) var(--space-6);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+        }
+
+        .list-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .list-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .list-count {
+            background: var(--primary-color);
+            color: white;
+            padding: var(--space-1) var(--space-2);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .list-actions {
+            display: flex;
+            gap: var(--space-2);
+        }
+
+        .list-content {
+            padding: var(--space-4);
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .sortable-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-3);
+            min-height: 100px;
+        }
+
+        /* === PERSON CARDS === */
+        .person-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-xl);
+            padding: var(--space-4);
+            cursor: grab;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+            position: relative;
+        }
+
+        .person-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .person-card.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--space-3);
+        }
+
+        .person-name {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text-primary);
+            margin-bottom: var(--space-1);
+        }
+
+        .person-info {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .card-actions {
+            display: flex;
+            gap: var(--space-1);
+        }
+
+        .card-details {
+            display: grid;
+            gap: var(--space-2);
+            margin-bottom: var(--space-3);
+        }
+
+        .card-detail {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .detail-icon {
+            width: 14px;
+            color: var(--text-light);
+            flex-shrink: 0;
+        }
+
+        .card-contact {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--space-3);
+            margin-top: var(--space-3);
+        }
+
+        .contact-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-2);
+        }
+
+        .contact-info {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-1);
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-size: 0.875rem;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            padding: var(--space-1) var(--space-2);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .tag.estado-casado { background: #fef3c7; color: #d97706; }
+        .tag.estado-soltero { background: #dbeafe; color: #2563eb; }
+        .tag.tiene-hijos { background: #dcfce7; color: #16a34a; }
+
+        /* === BUTTONS === */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-2) var(--space-4);
+            border: none;
+            border-radius: var(--radius-lg);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--error-color);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: var(--space-1) var(--space-2);
+            font-size: 0.75rem;
+        }
+
+        .btn-icon {
+            padding: var(--space-2);
+            width: auto;
+            height: auto;
+        }
+
+        /* === MODALS === */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-primary);
+            border-radius: var(--radius-2xl);
+            padding: var(--space-8);
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-6);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-light);
+            cursor: pointer;
+            padding: var(--space-2);
+            border-radius: var(--radius-lg);
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        /* === FORMS === */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-4);
+            margin-bottom: var(--space-6);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .form-input {
+            padding: var(--space-3) var(--space-4);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: var(--space-3);
+            justify-content: flex-end;
+        }
+
+        /* === GOOGLE MAPS === */
+        .maps-section {
+            background: white;
+            border-radius: var(--radius-2xl);
+            padding: var(--space-8);
+            margin-bottom: var(--space-8);
+            box-shadow: var(--shadow-md);
+        }
+
+        .maps-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-6);
+        }
+
+        .maps-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .maps-controls {
+            display: flex;
+            gap: var(--space-3);
+            align-items: center;
+        }
+
+        .map-container {
+            height: 500px;
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: var(--space-6);
+        }
+
+        .map-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-2);
+            margin-bottom: var(--space-4);
+        }
+
+        .map-filter-btn {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-2) var(--space-3);
+            border: 2px solid var(--border-color);
+            background: var(--bg-primary);
+            border-radius: var(--radius-lg);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .map-filter-btn.active {
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .map-legend {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--space-4);
+        }
+
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: var(--space-3);
+            color: var(--text-primary);
+        }
+
+        .legend-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-3);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-size: 0.875rem;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* === NOTIFICATIONS === */
+        .toast {
+            position: fixed;
+            top: var(--space-4);
+            right: var(--space-4);
+            background: var(--bg-primary);
+            border-radius: var(--radius-lg);
+            padding: var(--space-4);
+            box-shadow: var(--shadow-xl);
+            border-left: 4px solid var(--success-color);
+            z-index: 1100;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .toast.error {
+            border-left-color: var(--error-color);
+        }
+
+        .toast.warning {
+            border-left-color: var(--warning-color);
+        }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 768px) {
+            .main-container {
+                padding: var(--space-4);
+            }
+
+            .search-filters {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-row {
+                flex-direction: column;
+            }
+
+            .kanban-container {
+                flex-direction: column;
+                overflow-x: visible;
+            }
+
+            .kanban-list {
+                min-width: 100%;
+                max-width: 100%;
+                max-height: none;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                padding: var(--space-4);
+                width: 95%;
+            }
+
+            .map-container {
+                height: 300px;
+            }
+
+            .maps-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--space-4);
+            }
+
+            .maps-controls {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+
+        /* === ANIMATIONS === */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .person-card {
+            animation: fadeIn 0.3s ease;
+        }
+
+        .sortable-ghost {
+            opacity: 0.3;
+            background: var(--bg-secondary);
+        }
+
+        .sortable-chosen {
+            transform: scale(1.02);
+            box-shadow: var(--shadow-xl);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <h1 class="header-title">
+                <i class="fas fa-users"></i>
+                {{ tablero.nombre if tablero else 'Gestión de Personas' }}
+            </h1>
+            <div class="header-actions">
+                <a href="{{ url_for('tableros.lista') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Volver
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-container">
+        <!-- Controls Section -->
+        <section class="controls-section">
+            <div class="controls-header">
+                <h2 class="controls-title">
+                    <i class="fas fa-filter"></i>
+                    Filtros y Búsqueda
+                </h2>
+            </div>
+            
+            <div class="search-filters">
+                <div class="search-input">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Buscar por nombre, dirección, teléfono, ocupación...">
+                </div>
+                
+                <div class="filter-select">
+                    <select id="estadoCivilFilter">
+                        <option value="">Todos los estados civiles</option>
+                        <option value="Soltero">Solteros</option>
+                        <option value="Casado">Casados</option>
+                        <option value="Divorciado">Divorciados</option>
+                        <option value="Viudo">Viudos</option>
+                    </select>
+                </div>
+                
+                <div class="filter-select">
+                    <select id="hijosFilter">
+                        <option value="">Todos</option>
+                        <option value="con-hijos">Con hijos</option>
+                        <option value="sin-hijos">Sin hijos</option>
+                    </select>
+                </div>
+                
+                <div class="filter-select">
+                    <select id="listaFilter">
+                        <option value="">Todas las listas</option>
+                        {% for lista in listas %}
+                        <option value="{{ lista.id }}">{{ lista.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalPersonas">{{ tablero.estadisticas.total_personas if tablero.estadisticas else 0 }}</div>
+                    <div class="stat-label">Total de Personas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalCasados">{{ tablero.estadisticas.casados if tablero.estadisticas else 0 }}</div>
+                    <div class="stat-label">Casados</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalConHijos">{{ tablero.estadisticas.con_hijos if tablero.estadisticas else 0 }}</div>
+                    <div class="stat-label">Con Hijos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalListas">{{ listas | length }}</div>
+                    <div class="stat-label">Listas</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Kanban Board -->
+        <section class="kanban-container">
+            {% for lista in listas %}
+            <div class="kanban-list" data-lista-id="{{ lista.id }}">
+                <div class="list-header">
+                    <div class="list-title">
+                        <div class="list-color" style="background-color: {{ lista.color }}"></div>
+                        {{ lista.nombre }}
+                        <span class="list-count">{{ lista.tarjetas | length }}</span>
+                    </div>
+                    <div class="list-actions">
+                        <button class="btn btn-sm btn-primary" onclick="abrirModalPersona('{{ lista.id }}')">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="eliminarLista('{{ lista.id }}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="list-content">
+                    <div class="sortable-list" data-lista-id="{{ lista.id }}">
+                        {% for tarjeta in lista.tarjetas %}
+                        <div class="person-card" data-id="{{ tarjeta.id }}" data-lista-id="{{ lista.id }}">
+                            <div class="card-header">
+                                <div>
+                                    <div class="person-name">{{ tarjeta.nombre_completo }}</div>
+                                    <div class="person-info">
+                                        {% if tarjeta.edad %}{{ tarjeta.edad }} años{% endif %}
+                                        {% if tarjeta.ocupacion %} • {{ tarjeta.ocupacion }}{% endif %}
+                                    </div>
+                                </div>
+                                <div class="card-actions">
+                                    <a href="{{ url_for('tableros.editar_tarjeta', lista_id=lista.id, tarjeta_id=tarjeta.id) }}" 
+                                       class="btn btn-sm btn-secondary" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-danger" onclick="eliminarPersona('{{ tarjeta.id }}')" title="Eliminar">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="card-details">
+                                {% if tarjeta.telefono %}
+                                <div class="card-detail">
+                                    <i class="fas fa-phone detail-icon"></i>
+                                    <span>{{ tarjeta.telefono }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if tarjeta.direccion %}
+                                <div class="card-detail">
+                                    <i class="fas fa-map-marker-alt detail-icon"></i>
+                                    <span>{{ tarjeta.direccion }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if tarjeta.estado_civil %}
+                                <div class="card-detail">
+                                    <i class="fas fa-heart detail-icon"></i>
+                                    <span class="tag estado-{{ tarjeta.estado_civil.lower() }}">{{ tarjeta.estado_civil }}</span>
+                                </div>
+                                {% endif %}
+                                
+                                {% if tarjeta.numero_hijos and tarjeta.numero_hijos > 0 %}
+                                <div class="card-detail">
+                                    <i class="fas fa-child detail-icon"></i>
+                                    <span class="tag tiene-hijos">
+                                        {{ tarjeta.numero_hijos }} hijo{% if tarjeta.numero_hijos != 1 %}s{% endif %}
+                                        {% if tarjeta.edades_hijos %} ({{ tarjeta.edades_hijos }}){% endif %}
+                                    </span>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="card-detail">
+                                    <i class="fas fa-calendar detail-icon"></i>
+                                    <span>Creado: {{ tarjeta.fecha_creacion[:10] if tarjeta.fecha_creacion else 'N/A' }}</span>
+                                </div>
+                            </div>
+                            
+                            {% if tarjeta.nombre_conyuge or tarjeta.telefono_conyuge %}
+                            <div class="card-contact">
+                                <div class="contact-title">Información del Cónyuge</div>
+                                <div class="contact-info">
+                                    {% if tarjeta.nombre_conyuge %}
+                                    <div class="contact-item">
+                                        <i class="fas fa-user detail-icon"></i>
+                                        <span>{{ tarjeta.nombre_conyuge }}</span>
+                                    </div>
+                                    {% endif %}
+                                    {% if tarjeta.telefono_conyuge %}
+                                    <div class="contact-item">
+                                        <i class="fas fa-phone detail-icon"></i>
+                                        <span>{{ tarjeta.telefono_conyuge }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            
+            <!-- Botón para agregar nueva lista -->
+            <div class="kanban-list" style="min-width: 300px; max-width: 300px;">
+                <div class="list-content" style="display: flex; align-items: center; justify-content: center; height: 200px;">
+                    <button class="btn btn-primary" onclick="abrirModalLista()">
+                        <i class="fas fa-plus"></i>
+                        Agregar Lista
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ✨ SECCIÓN DE GOOGLE MAPS ✨ -->
+        <section class="maps-section">
+            <div class="maps-header">
+                <h2 class="maps-title">
+                    <i class="fas fa-map-marked-alt"></i>
+                    Mapa de Ubicaciones de Personas
+                </h2>
+                <div class="maps-controls">
+                    <button class="btn btn-secondary" onclick="centrarMapa()">
+                        <i class="fas fa-crosshairs"></i>
+                        Centrar Mapa
+                    </button>
+                    <button class="btn btn-secondary" onclick="cambiarEstiloMapa()">
+                        <i class="fas fa-layer-group"></i>
+                        Cambiar Estilo
+                    </button>
+                </div>
+            </div>
+            
+            <div class="map-filters">
+                <button class="map-filter-btn active" onclick="toggleFiltroMapa('all')" data-filter="all">
+                    <i class="fas fa-globe"></i>
+                    Mostrar Todo
+                </button>
+                {% for lista in listas %}
+                <button class="map-filter-btn" onclick="toggleFiltroMapa('{{ lista.id }}')" data-filter="{{ lista.id }}">
+                    <div class="legend-color" style="background-color: {{ lista.color }}"></div>
+                    {{ lista.nombre }}
+                </button>
+                {% endfor %}
+            </div>
+            
+            <div id="map" class="map-container"></div>
+            
+            <div class="map-legend">
+                <div class="legend-title">Leyenda del Mapa</div>
+                <div class="legend-items">
+                    {% for lista in listas %}
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: {{ lista.color }}"></div>
+                        <span>{{ lista.nombre }} (<span id="count-{{ lista.id }}">0</span> personas)</span>
+                    </div>
+                    {% endfor %}
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #666;"></div>
+                        <span>Total visible: <span id="total-visible">0</span></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal para agregar/editar persona -->
+    <div id="modalPersona" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Agregar Nueva Persona</h3>
+                <button class="modal-close" onclick="cerrarModal('modalPersona')">&times;</button>
+            </div>
+            
+            <form id="formPersona" onsubmit="guardarPersona(event)">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Nombre *</label>
+                        <input type="text" name="nombre" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Apellido *</label>
+                        <input type="text" name="apellido" class="form-input" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Teléfono</label>
+                        <input type="tel" name="telefono" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Edad</label>
+                        <input type="number" name="edad" class="form-input" min="0" max="120">
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label class="form-label">Dirección</label>
+                        <input type="text" name="direccion" class="form-input" placeholder="Calle, número, colonia, ciudad...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Estado Civil</label>
+                        <select name="estado_civil" class="form-input">
+                            <option value="">Seleccionar...</option>
+                            <option value="Soltero">Soltero</option>
+                            <option value="Casado">Casado</option>
+                            <option value="Divorciado">Divorciado</option>
+                            <option value="Viudo">Viudo</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Ocupación</label>
+                        <input type="text" name="ocupacion" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Número de Hijos</label>
+                        <input type="number" name="numero_hijos" class="form-input" min="0" max="20">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Edades de Hijos</label>
+                        <input type="text" name="edades_hijos" class="form-input" placeholder="Ej: 5, 8, 12">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Nombre del Cónyuge</label>
+                        <input type="text" name="nombre_conyuge" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Teléfono del Cónyuge</label>
+                        <input type="tel" name="telefono_conyuge" class="form-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Responsable</label>
+                        <input type="text" name="responsable" class="form-input" placeholder="Quien está a cargo de esta persona">
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label class="form-label">Notas</label>
+                        <textarea name="notas" class="form-input" rows="3" placeholder="Información adicional..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalPersona')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        Guardar
+                    </button>
+                </div>
+                
+                <input type="hidden" name="lista_id" id="listaIdPersona">
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para agregar lista -->
+    <div id="modalLista" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Agregar Nueva Lista</h3>
+                <button class="modal-close" onclick="cerrarModal('modalLista')">&times;</button>
+            </div>
+            
+            <form id="formLista" onsubmit="guardarLista(event)">
+                <div class="form-group">
+                    <label class="form-label">Nombre de la Lista *</label>
+                    <input type="text" name="titulo" class="form-input" required placeholder="Ej: Miembros Activos, Visitantes, etc.">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Color</label>
+                    <select name="color" class="form-input">
+                        <option value="#3498db">Azul</option>
+                        <option value="#e74c3c">Rojo</option>
+                        <option value="#2ecc71">Verde</option>
+                        <option value="#f39c12">Naranja</option>
+                        <option value="#9b59b6">Púrpura</option>
+                        <option value="#1abc9c">Turquesa</option>
+                        <option value="#e67e22">Naranja Oscuro</option>
+                        <option value="#34495e">Gris Azulado</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarModal('modalLista')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        Crear Lista
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAM44jyxplaDzn1m7bJ79RtQGCmzYNuOCg&libraries=places&callback=initMap" async defer></script>
+
+    <script>
+        // ===== VARIABLES GLOBALES =====
+        let mapa;
+        let marcadores = [];
+        let infoWindow;
+        let estiloMapaActual = 0;
+        let filtroMapaActivo = 'all';
+        
+        const estilosMapa = [
+            [], // Estilo por defecto
+            [
+                { "featureType": "all", "elementType": "geometry.fill", "stylers": [{ "weight": "2.00" }] },
+                { "featureType": "all", "elementType": "geometry.stroke", "stylers": [{ "color": "#9c9c9c" }] },
+                { "featureType": "landscape", "elementType": "all", "stylers": [{ "color": "#f2f2f2" }] },
+                { "featureType": "poi", "elementType": "all", "stylers": [{ "visibility": "off" }] },
+                { "featureType": "road", "elementType": "all", "stylers": [{ "saturation": -100 }, { "lightness": 45 }] },
+                { "featureType": "transit", "elementType": "all", "stylers": [{ "visibility": "off" }] },
+                { "featureType": "water", "elementType": "all", "stylers": [{ "color": "#46bcec" }, { "visibility": "on" }] }
+            ]
+        ];
+
+        // ===== DATOS DE LISTAS Y PERSONAS =====
+        const listas = [
+            {% for lista in listas %}
+            {
+                id: '{{ lista.id }}',
+                nombre: '{{ lista.nombre }}',
+                color: '{{ lista.color }}',
+                personas: [
+                    {% for tarjeta in lista.tarjetas %}
+                    {
+                        id: '{{ tarjeta.id }}',
+                        nombre_completo: '{{ tarjeta.nombre_completo }}',
+                        direccion: '{{ tarjeta.direccion }}',
+                        telefono: '{{ tarjeta.telefono }}',
+                        edad: {{ tarjeta.edad if tarjeta.edad else 'null' }},
+                        estado_civil: '{{ tarjeta.estado_civil }}',
+                        numero_hijos: {{ tarjeta.numero_hijos if tarjeta.numero_hijos else 0 }},
+                        edades_hijos: '{{ tarjeta.edades_hijos }}',
+                        ocupacion: '{{ tarjeta.ocupacion }}',
+                        nombre_conyuge: '{{ tarjeta.nombre_conyuge }}',
+                        telefono_conyuge: '{{ tarjeta.telefono_conyuge }}'
+                    }{% if not loop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        // ===== INICIALIZACIÓN =====
+        document.addEventListener('DOMContentLoaded', function() {
+            inicializarDragAndDrop();
+            inicializarFiltros();
+        });
+
+        // ===== GOOGLE MAPS =====
+        function initMap() {
+            const centro = { lat: 28.5383, lng: -81.3792 }; // Orlando, FL
+            
+            mapa = new google.maps.Map(document.getElementById('map'), {
+                zoom: 11,
+                center: centro,
+                styles: estilosMapa[estiloMapaActual]
+            });
+
+            infoWindow = new google.maps.InfoWindow();
+            geocodificarPersonas();
+        }
+
+        function geocodificarPersonas() {
+            const geocoder = new google.maps.Geocoder();
+            
+            listas.forEach(lista => {
+                lista.personas.forEach(persona => {
+                    if (persona.direccion && persona.direccion.trim()) {
+                        let direccionCompleta = persona.direccion;
+                        if (!direccionCompleta.toLowerCase().includes('orlando')) {
+                            direccionCompleta += ', Orlando, FL';
+                        }
+                        
+                        geocoder.geocode({ 
+                            address: direccionCompleta,
+                            region: 'US'
+                        }, (resultados, estado) => {
+                            if (estado === 'OK' && resultados[0]) {
+                                crearMarcador(persona, lista, resultados[0].geometry.location);
+                            }
+                        });
+                    }
+                });
+            });
+        }
+
+        function crearMarcador(persona, lista, posicion) {
+            const marcador = new google.maps.Marker({
+                position: posicion,
+                map: mapa,
+                title: persona.nombre_completo,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 10,
+                    fillColor: lista.color,
+                    fillOpacity: 0.8,
+                    strokeColor: '#ffffff',
+                    strokeWeight: 2
+                }
+            });
+
+            const infoContent = `
+                <div style="padding: 10px; max-width: 300px;">
+                    <h3 style="margin: 0 0 10px 0; color: #333;">${persona.nombre_completo}</h3>
+                    <div style="margin-bottom: 8px;"><strong>Lista:</strong> ${lista.nombre}</div>
+                    ${persona.telefono ? `<div style="margin-bottom: 8px;"><strong>Teléfono:</strong> ${persona.telefono}</div>` : ''}
+                    ${persona.edad ? `<div style="margin-bottom: 8px;"><strong>Edad:</strong> ${persona.edad} años</div>` : ''}
+                    ${persona.estado_civil ? `<div style="margin-bottom: 8px;"><strong>Estado Civil:</strong> ${persona.estado_civil}</div>` : ''}
+                    ${persona.ocupacion ? `<div style="margin-bottom: 8px;"><strong>Ocupación:</strong> ${persona.ocupacion}</div>` : ''}
+                    ${persona.numero_hijos > 0 ? `<div style="margin-bottom: 8px;"><strong>Hijos:</strong> ${persona.numero_hijos}${persona.edades_hijos ? ` (${persona.edades_hijos})` : ''}</div>` : ''}
+                    ${persona.nombre_conyuge ? `<div style="margin-bottom: 8px;"><strong>Cónyuge:</strong> ${persona.nombre_conyuge}</div>` : ''}
+                    <div style="margin-top: 10px;"><small><strong>Dirección:</strong> ${persona.direccion}</small></div>
+                </div>
+            `;
+
+            marcador.addListener('click', () => {
+                infoWindow.setContent(infoContent);
+                infoWindow.open(mapa, marcador);
+            });
+
+            marcador.listaId = lista.id;
+            marcador.personaId = persona.id;
+            marcador.visible = true;
+            marcadores.push(marcador);
+            actualizarContadoresMapa();
+        }
+
+        function centrarMapa() {
+            if (marcadores.length === 0) return;
+            
+            const bounds = new google.maps.LatLngBounds();
+            marcadores.forEach(marcador => {
+                if (marcador.visible) {
+                    bounds.extend(marcador.getPosition());
+                }
+            });
+            
+            mapa.fitBounds(bounds);
+            if (marcadores.filter(m => m.visible).length === 1) {
+                mapa.setZoom(15);
+            }
+        }
+
+        function cambiarEstiloMapa() {
+            estiloMapaActual = (estiloMapaActual + 1) % estilosMapa.length;
+            mapa.setOptions({ styles: estilosMapa[estiloMapaActual] });
+        }
+
+        function toggleFiltroMapa(filtro) {
+            document.querySelectorAll('.map-filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-filter="${filtro}"]`).classList.add('active');
+            
+            filtroMapaActivo = filtro;
+            
+            marcadores.forEach(marcador => {
+                if (filtro === 'all' || marcador.listaId === filtro) {
+                    marcador.setMap(mapa);
+                    marcador.visible = true;
+                } else {
+                    marcador.setMap(null);
+                    marcador.visible = false;
+                }
+            });
+            
+            actualizarContadoresMapa();
+        }
+
+        function actualizarContadoresMapa() {
+            listas.forEach(lista => {
+                const count = marcadores.filter(m => m.listaId === lista.id && m.visible).length;
+                const countElement = document.getElementById(`count-${lista.id}`);
+                if (countElement) {
+                    countElement.textContent = count;
+                }
+            });
+            
+            const totalVisible = marcadores.filter(m => m.visible).length;
+            const totalElement = document.getElementById('total-visible');
+            if (totalElement) {
+                totalElement.textContent = totalVisible;
+            }
+        }
+
+        // ===== DRAG AND DROP =====
+        function inicializarDragAndDrop() {
+            document.querySelectorAll('.sortable-list').forEach(lista => {
+                new Sortable(lista, {
+                    group: 'kanban',
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    chosenClass: 'sortable-chosen',
+                    dragClass: 'dragging',
+                    onEnd: function(evt) {
+                        const tarjetaId = evt.item.getAttribute('data-id');
+                        const listaOrigenId = evt.from.getAttribute('data-lista-id');
+                        const listaDestinoId = evt.to.getAttribute('data-lista-id');
+                        
+                        if (evt.from !== evt.to) {
+                            moverTarjeta(tarjetaId, listaOrigenId, listaDestinoId, evt.newIndex);
+                        }
+                    }
+                });
+            });
+        }
+
+        function moverTarjeta(tarjetaId, listaOrigenId, listaDestinoId, nuevaPosicion) {
+            fetch('/tableros/mover_tarjeta', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    tarjeta_id: tarjetaId,
+                    lista_origen_id: listaOrigenId,
+                    lista_destino_id: listaDestinoId,
+                    nueva_posicion: nuevaPosicion
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const tarjeta = document.querySelector(`[data-id="${tarjetaId}"]`);
+                    if (tarjeta) {
+                        tarjeta.setAttribute('data-lista-id', listaDestinoId);
+                    }
+                    actualizarContadores();
+                    mostrarNotificacion('Persona movida exitosamente', 'success');
+                } else {
+                    mostrarNotificacion('Error al mover la persona', 'error');
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarNotificacion('Error al mover la persona', 'error');
+                location.reload();
+            });
+        }
+
+        // ===== FILTROS Y BÚSQUEDA =====
+        function inicializarFiltros() {
+            const searchInput = document.getElementById('searchInput');
+            const estadoCivilFilter = document.getElementById('estadoCivilFilter');
+            const hijosFilter = document.getElementById('hijosFilter');
+            const listaFilter = document.getElementById('listaFilter');
+            
+            [searchInput, estadoCivilFilter, hijosFilter, listaFilter].forEach(elemento => {
+                elemento.addEventListener('input', aplicarFiltros);
+                elemento.addEventListener('change', aplicarFiltros);
+            });
+        }
+
+        function aplicarFiltros() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const estadoCivil = document.getElementById('estadoCivilFilter').value;
+            const hijosFilter = document.getElementById('hijosFilter').value;
+            const listaFilter = document.getElementById('listaFilter').value;
+            
+            document.querySelectorAll('.person-card').forEach(card => {
+                let mostrar = true;
+                
+                // Filtro de búsqueda
+                if (searchTerm) {
+                    const textoCompleto = card.textContent.toLowerCase();
+                    mostrar = mostrar && textoCompleto.includes(searchTerm);
+                }
+                
+                // Filtro estado civil
+                if (estadoCivil) {
+                    const estadoCard = card.querySelector('.tag') ? card.querySelector('.tag').textContent : '';
+                    mostrar = mostrar && estadoCard.includes(estadoCivil);
+                }
+                
+                // Filtro hijos
+                if (hijosFilter === 'con-hijos') {
+                    mostrar = mostrar && card.querySelector('.tiene-hijos') !== null;
+                } else if (hijosFilter === 'sin-hijos') {
+                    mostrar = mostrar && card.querySelector('.tiene-hijos') === null;
+                }
+                
+                // Filtro lista
+                if (listaFilter) {
+                    mostrar = mostrar && card.getAttribute('data-lista-id') === listaFilter;
+                }
+                
+                card.style.display = mostrar ? 'block' : 'none';
+            });
+            
+            actualizarContadores();
+        }
+
+        // ===== MODALES =====
+        function abrirModalPersona(listaId) {
+            document.getElementById('listaIdPersona').value = listaId;
+            document.getElementById('modalPersona').classList.add('active');
+            document.querySelector('#modalPersona .modal-title').textContent = 'Agregar Nueva Persona';
+            document.getElementById('formPersona').reset();
+        }
+
+        function abrirModalLista() {
+            document.getElementById('modalLista').classList.add('active');
+        }
+
+        function cerrarModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    cerrarModal(modal.id);
+                }
+            });
+        });
+
+        // ===== FORMULARIOS =====
+        function guardarPersona(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Convertir números
+            data.edad = data.edad ? parseInt(data.edad) : null;
+            data.numero_hijos = data.numero_hijos ? parseInt(data.numero_hijos) : 0;
+            
+            // Para compatibilidad con el backend actual
+            data.titulo = `${data.nombre} ${data.apellido}`.trim();
+            data.descripcion = data.direccion;
+            
+            fetch(`/tableros/agregar_tarjeta?lista_id=${data.lista_id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mostrarNotificacion('Persona agregada exitosamente', 'success');
+                    cerrarModal('modalPersona');
+                    location.reload();
+                } else {
+                    mostrarNotificacion('Error al agregar la persona', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarNotificacion('Error al agregar la persona', 'error');
+            });
+        }
+
+        function guardarLista(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const data = Object.fromEntries(formData.entries());
+            data.tablero_id = '{{ tablero.id }}';
+            
+            fetch('/tableros/agregar_lista', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    mostrarNotificacion('Lista creada exitosamente', 'success');
+                    cerrarModal('modalLista');
+                    location.reload();
+                } else {
+                    mostrarNotificacion('Error al crear la lista', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarNotificacion('Error al crear la lista', 'error');
+            });
+        }
+
+        // ===== ELIMINAR =====
+        function eliminarPersona(tarjetaId) {
+            if (!confirm('¿Estás seguro de que quieres eliminar esta persona?')) {
+                return;
+            }
+            
+            fetch(`/tableros/eliminar_tarjeta/${tarjetaId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const card = document.querySelector(`[data-id="${tarjetaId}"]`);
+                    if (card) {
+                        card.remove();
+                    }
+                    
+                    // Eliminar marcador del mapa
+                    const marcadorIndex = marcadores.findIndex(m => m.personaId === tarjetaId);
+                    if (marcadorIndex !== -1) {
+                        marcadores[marcadorIndex].setMap(null);
+                        marcadores.splice(marcadorIndex, 1);
+                    }
+                    
+                    actualizarContadores();
+                    actualizarContadoresMapa();
+                    mostrarNotificacion('Persona eliminada exitosamente', 'success');
+                } else {
+                    mostrarNotificacion('Error al eliminar la persona', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarNotificacion('Error al eliminar la persona', 'error');
+            });
+        }
+
+        function eliminarLista(listaId) {
+            if (!confirm('¿Estás seguro de que quieres eliminar esta lista y todas sus personas?')) {
+                return;
+            }
+            
+            fetch(`/tableros/eliminar_lista/${listaId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    mostrarNotificacion('Error al eliminar la lista', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                mostrarNotificacion('Error al eliminar la lista', 'error');
+            });
+        }
+
+        // ===== CONTADORES =====
+        function actualizarContadores() {
+            document.querySelectorAll('.kanban-list').forEach(lista => {
+                const listaId = lista.getAttribute('data-lista-id');
+                if (listaId) {
+                    const count = lista.querySelectorAll('.person-card[style*="display: block"], .person-card:not([style*="display: none"])').length;
+                    const counter = lista.querySelector('.list-count');
+                    if (counter) {
+                        counter.textContent = count;
+                    }
+                }
+            });
+        }
+
+        // ===== NOTIFICACIONES =====
+        function mostrarNotificacion(mensaje, tipo = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${tipo}`;
+            toast.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                    <span>${mensaje}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ===== INICIALIZACIÓN DE MAPA =====
+        window.initMap = initMap;
+    </script>
+</body>
+</html>
