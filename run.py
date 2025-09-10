@@ -23,3 +23,4 @@ except Exception as e:
     print("Full traceback:", file=sys.stderr, flush=True)
     traceback.print_exc(file=sys.stderr)
     sys.exit(1)
+# Force rebuild
