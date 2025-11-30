@@ -64,12 +64,15 @@ def register():
             return render_template("auth/register.html")
             
         # Intentar crear usuario
+        print(f"DEBUG: Intentando registrar usuario: {username}, {email}")
         user = user_storage.create_user(username, email, password, nombre_completo)
         
         if user:
+            print(f"DEBUG: Usuario creado exitosamente: {user.id}")
             flash("¡Cuenta creada exitosamente! Por favor inicia sesión.", "success")
             return redirect(url_for("auth.login"))
         else:
+            print("DEBUG: Fallo al crear usuario (duplicado o error)")
             flash("El nombre de usuario o email ya están en uso.", "error")
             
     return render_template("auth/register.html")
