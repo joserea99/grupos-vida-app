@@ -16,6 +16,7 @@ def login():
             return render_template("auth/login.html")
 
         # Intentar buscar por username o email
+        user_storage.load_from_disk() # Recargar datos para asegurar que vemos usuarios nuevos
         user = user_storage.get_user_by_username(username_or_email)
         if not user:
             user = user_storage.get_user_by_email(username_or_email)
