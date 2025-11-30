@@ -1,10 +1,33 @@
-from flask import Blueprint, render_template, session, redirect, url_for, flash, request, jsonify, send_file
+from flask import Blueprint, render_template, session, redirect, url_for, flash, request, jsonify, send_file, current_app
 from io import BytesIO
 from datetime import datetime
 import pandas as pd
-from app.models import storage
+import json
+from app.models import storage, UserStorage
 
 tableros_bp = Blueprint("tableros", __name__)
+user_storage = UserStorage()
+
+@tableros_bp.before_request
+def check_subscription():
+    # Permitir peticiones OPTIONS y archivos estáticos
+    if request.method == 'OPTIONS' or request.endpoint == 'static':
+        return
+        
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+        
+    user = user_storage.get_user(session['user_id'])
+    if not user:
+        session.clear()
+        return redirect(url_for('auth.login'))
+        
+    # Verificar suscripción (con periodo de gracia de 14 días)
+    if not user.suscripcion_activa:
+        dias_desde_registro = (datetime.now() - user.fecha_registro).days
+        if dias_desde_registro > 14:
+            flash("Tu periodo de prueba ha terminado. Por favor suscríbete para continuar.", "warning")
+            return redirect(url_for('billing.subscribe'))
 
 # Datos de plantillas (mantenemos las plantillas)
 PLANTILLAS_EJEMPLO = {
@@ -93,6 +116,22 @@ def lista():
     return render_template("tableros/lista.html", tableros=tableros, stats=stats)
 
 
+# Colores para las listas
+KANBAN_COLORS = [
+    "#ef4444", "#dc2626", "#b91c1c", # Rojos
+    "#f97316", "#ea580c", "#c2410c", # Naranjas
+    "#f59e0b", "#d97706", "#b45309", # Ambar
+    "#84cc16", "#65a30d", "#4d7c0f", # Lima
+    "#10b981", "#059669", "#047857", # Esmeralda
+    "#06b6d4", "#0891b2", "#0e7490", # Cyan
+    "#3b82f6", "#2563eb", "#1d4ed8", # Azul
+    "#6366f1", "#4f46e5", "#4338ca", # Indigo
+    "#8b5cf6", "#7c3aed", "#6d28d9", # Violeta
+    "#ec4899", "#db2777", "#be185d", # Rosa
+    "#f43f5e", "#e11d48", "#be123c", # Rose
+    "#64748b", "#475569", "#334155"  # Slate
+]
+
 @tableros_bp.route("/<tablero_id>")
 def ver(tablero_id):
     if "user_id" not in session:
@@ -107,7 +146,11 @@ def ver(tablero_id):
     listas = tablero_dict['listas']
     usuario = {"username": session.get("username")}
     
-    return render_template("tableros/ver.html", tablero=tablero_dict, listas=listas, usuario=usuario)
+    return render_template("tableros/ver.html", 
+                         tablero=tablero_dict, 
+                         listas=listas, 
+                         usuario=usuario,
+                         colores=KANBAN_COLORS)
 
 
 @tableros_bp.route("/crear")
@@ -206,19 +249,48 @@ def agregar_tarjeta():
             # Si no hay JSON, intentar form data
             data = request.form.to_dict()
         
+        if not lista_id and data:
+            lista_id = data.get('lista_id')
+
         if not lista_id:
             return jsonify({'error': 'Lista ID es requerido'}), 400
         
         # Buscar la lista en todos los tableros
         lista_encontrada = None
-        for tablero in storage.get_all_tableros():
-            lista = tablero.get_lista(lista_id)
-            if lista:
-                lista_encontrada = lista
-                break
+        tablero_encontrado = None
+        
+        # Optimización: Si viene el tablero_id, buscar directamente
+        tablero_id = data.get('tablero_id')
+        if tablero_id:
+            tablero = storage.get_tablero(tablero_id)
+            if tablero:
+                lista = tablero.get_lista(lista_id)
+                if lista:
+                    lista_encontrada = lista
+                    tablero_encontrado = tablero
+        
+        # Si no se encontró (o no venía tablero_id), buscar en todos
+        if not lista_encontrada:
+            for tablero in storage.get_all_tableros():
+                lista = tablero.get_lista(lista_id)
+                if lista:
+                    lista_encontrada = lista
+                    tablero_encontrado = tablero
+                    break
         
         if not lista_encontrada:
-            return jsonify({'error': 'Lista no encontrada'}), 404
+            # Intentar buscar lista_id en el body si no vino en args
+            if not lista_id and data.get('lista_id'):
+                lista_id = data.get('lista_id')
+                for tablero in storage.get_all_tableros():
+                    lista = tablero.get_lista(lista_id)
+                    if lista:
+                        lista_encontrada = lista
+                        tablero_encontrado = tablero
+                        break
+            
+            if not lista_encontrada:
+                return jsonify({'error': 'Lista no encontrada'}), 404
         
         # Extraer datos de la persona
         nombre = data.get('nombre', '').strip()
@@ -249,10 +321,38 @@ def agregar_tarjeta():
             ocupacion=data.get('ocupacion', ''),
             nombre_conyuge=data.get('nombre_conyuge', ''),
             telefono_conyuge=data.get('telefono_conyuge', ''),
+            edad_conyuge=int(data.get('edad_conyuge')) if data.get('edad_conyuge') else None,
+            trabajo_conyuge=data.get('trabajo_conyuge', ''),
+            fecha_matrimonio=data.get('fecha_matrimonio', ''),
             email=data.get('email', ''),
             notas=data.get('notas', ''),
-            responsable=data.get('responsable', session.get('username', ''))
+            codigo_postal=data.get('codigo_postal', ''),
+            responsable=data.get('responsable', session.get('username', '')),
+            # Campos eclesiásticos
+            bautizado=data.get('bautizado') == 'on' or data.get('bautizado') == True,
+            asiste_grupo=data.get('asiste_grupo') == 'on' or data.get('asiste_grupo') == True,
+            ministerio=data.get('ministerio', ''),
+            es_lider=data.get('es_lider') == 'on' or data.get('es_lider') == True
         )
+        
+        # Registrar en historial
+        if tablero_encontrado: # Ensure tablero was found
+            tablero_encontrado.registrar_accion(
+                session.get('username', 'Usuario'),
+                'Crear Tarjeta',
+                f'Se creó a "{nueva_persona.nombre_completo}" en la lista "{lista_encontrada.nombre}"'
+            )
+            
+            # Registrar Undo
+            tablero_encontrado.registrar_undo(
+                'crear_tarjeta',
+                {
+                    'tarjeta_id': nueva_persona.id,
+                    'lista_id': lista_encontrada.id
+                }
+            )
+        
+        storage.save_to_disk()
         
         return jsonify({
             'success': True,
@@ -301,20 +401,70 @@ def mover_tarjeta():
             # Buscar tarjeta
             if lista_origen and not tarjeta_encontrada:
                 tarjeta_encontrada = lista_origen.get_tarjeta(tarjeta_id)
+
+            if lista_origen and lista_destino and tarjeta_encontrada:
+                tablero_encontrado = tablero
+                break
         
         if not all([tarjeta_encontrada, lista_origen, lista_destino]):
             return jsonify({'error': 'Elementos no encontrados'}), 404
         
         # Mover tarjeta
+        # Guardar posición original para Undo
+        posicion_original = -1
+        try:
+            posicion_original = lista_origen.tarjetas.index(tarjeta_encontrada)
+        except ValueError:
+            pass
+
         if lista_origen_id != lista_destino_id:
-            # Remover de lista origen
+            # Mover entre listas
             lista_origen.eliminar_tarjeta(tarjeta_id)
             # Agregar a lista destino
             lista_destino.tarjetas.insert(nueva_posicion, tarjeta_encontrada)
+            
+            # Registrar Undo
+            tablero_encontrado.registrar_undo(
+                'mover_tarjeta',
+                {
+                    'tarjeta_id': tarjeta_id,
+                    'lista_origen_id': lista_destino_id, # Invertido
+                    'lista_destino_id': lista_origen_id, # Invertido
+                    'nueva_posicion': posicion_original
+                }
+            )
         else:
             # Reordenar dentro de la misma lista
             lista_origen.tarjetas.remove(tarjeta_encontrada)
             lista_origen.tarjetas.insert(nueva_posicion, tarjeta_encontrada)
+            
+            # Registrar Undo
+            tablero_encontrado.registrar_undo(
+                'mover_tarjeta',
+                {
+                    'tarjeta_id': tarjeta_id,
+                    'lista_origen_id': lista_origen_id,
+                    'lista_destino_id': lista_origen_id,
+                    'nueva_posicion': posicion_original
+                }
+            )
+            
+            # Registrar en historial (reordenamiento)
+            tablero_encontrado.registrar_accion(
+                session.get('username', 'Usuario'),
+                'Reordenar Tarjeta',
+                f'Se reordenó la tarjeta "{tarjeta_encontrada.nombre_completo}" en la lista "{lista_origen.nombre}"'
+            )
+        
+        # Registrar en historial (movimiento entre listas)
+        if lista_origen_id != lista_destino_id:
+             tablero_encontrado.registrar_accion(
+                session.get('username', 'Usuario'),
+                'Mover Tarjeta',
+                f'Se movió a "{tarjeta_encontrada.nombre_completo}" de "{lista_origen.nombre}" a "{lista_destino.nombre}"'
+            )
+
+        storage.save_to_disk()
         
         return jsonify({
             'success': True,
@@ -355,6 +505,24 @@ def agregar_lista():
         # Agregar nueva lista usando el método existente
         nueva_lista = tablero.agregar_lista(titulo, color)
         
+        # Registrar en historial
+        tablero.registrar_accion(
+            session.get('username', 'Usuario'),
+            'Crear Lista',
+            f'Se creó la lista "{titulo}"'
+        )
+        
+        # Registrar Undo
+        tablero.registrar_undo(
+            'crear_lista',
+            {
+                'lista_id': nueva_lista.id
+            }
+        )
+        
+        # Guardar cambios en disco
+        storage.save_to_disk()
+        
         return jsonify({
             'success': True,
             'lista': nueva_lista.to_dict(),
@@ -367,8 +535,9 @@ def agregar_lista():
 
 
 @tableros_bp.route("/importar_excel/<lista_id>", methods=["GET", "POST"])
+# @login_required
 def importar_excel(lista_id):
-    """Importar tarjetas desde archivo Excel/CSV REAL"""
+    """Importar tarjetas desde archivo Excel/CSV"""
     if "user_id" not in session:
         return redirect(url_for("auth.login"))
     
@@ -397,7 +566,7 @@ def importar_excel(lista_id):
             return render_template('tableros/importar.html', lista=lista_data)
         
         elif request.method == 'POST':
-            # Procesar archivo subido REAL
+            # Procesar archivo subido
             if 'archivo' not in request.files:
                 flash('No se seleccionó ningún archivo', 'error')
                 return redirect(request.url)
@@ -407,336 +576,50 @@ def importar_excel(lista_id):
                 flash('No se seleccionó ningún archivo', 'error')
                 return redirect(request.url)
             
-            archivo.seek(0, 2)  # Ir al final
+            # Validar tamaño del archivo
+            archivo.seek(0, 2)
             file_size = archivo.tell()
-            archivo.seek(0)  # Volver al inicio
+            archivo.seek(0)
 
             if file_size > 10 * 1024 * 1024:  # 10MB
                 flash('❌ El archivo es demasiado grande. Máximo 10MB permitido.', 'error')
                 return redirect(request.url)
             
-            if archivo:
-                filename = archivo.filename.lower()
-                
-                # Procesamiento para archivos Excel
-                if filename.endswith('.xlsx') or filename.endswith('.xls'):
-                    try:
-                        import openpyxl
-                        
-                        # Procesar Excel
-                        workbook = openpyxl.load_workbook(archivo)
-                        sheet = workbook.active
-                        
-                        # Convertir Excel a formato similar a CSV
-                        filas_datos = []
-                        headers = [cell.value for cell in sheet[1]]
-                        
-                        for row in sheet.iter_rows(min_row=2, values_only=True):
-                            fila_dict = {}
-                            for i, value in enumerate(row):
-                                if i < len(headers) and headers[i]:
-                                    fila_dict[headers[i]] = str(value) if value else ''
-                            if any(fila_dict.values()):
-                                filas_datos.append(fila_dict)
-                        
-                        # Procesar datos de Excel
-                        tarjetas_importadas = 0
-                        errores = []
-                        
-                        for i, fila in enumerate(filas_datos, start=2):
-                            try:
-                                # Extraer datos de la fila Excel
-                                nombre_completo = (
-                                    fila.get('Nombre Completo', '') or 
-                                    fila.get('Nombre', '') or 
-                                    fila.get('Name', '') or
-                                    fila.get('nombre', '')
-                                ).strip()
-                                
-                                direccion = (
-                                    fila.get('Dirección', '') or 
-                                    fila.get('Direccion', '') or 
-                                    fila.get('direccion', '')
-                                ).strip()
-                                
-                                telefono = (
-                                    fila.get('Teléfono', '') or 
-                                    fila.get('Telefono', '') or 
-                                    fila.get('telefono', '')
-                                ).strip()
-                                
-                                edad_str = str(fila.get('Edad', '') or '').strip()
-                                estado_civil = str(fila.get('Estado Civil', '') or '').strip()
-                                hijos_str = str(fila.get('Num Hijos', '') or '0').strip()
-                                edades_hijos = str(fila.get('Edades Hijos', '') or '').strip()
-                                
-                                # Campos del cónyuge
-                                nombre_conyuge = str(fila.get('Nombre Cónyuge', '') or '').strip()
-                                telefono_conyuge = str(fila.get('Teléfono Cónyuge', '') or '').strip()
-                                edad_conyuge_str = str(fila.get('Edad Cónyuge', '') or '').strip()
-                                trabajo_conyuge = str(fila.get('Trabajo Cónyuge', '') or '').strip()
-                                fecha_matrimonio = str(fila.get('Fecha Matrimonio', '') or '').strip()
-                                
-                                # Validaciones
-                                if not nombre_completo:
-                                    errores.append(f'Fila {i}: Nombre es obligatorio')
-                                    continue
-                                
-                                # Procesar nombre
-                                partes_nombre = nombre_completo.split(' ', 1)
-                                nombre = partes_nombre[0]
-                                apellido = partes_nombre[1] if len(partes_nombre) > 1 else ''
-                                
-                                # Convertir edad
-                                edad = None
-                                if edad_str:
-                                    try:
-                                        edad = int(float(edad_str))
-                                    except:
-                                        pass
-                                
-                                # Convertir edad del cónyuge
-                                edad_conyuge = None
-                                if edad_conyuge_str:
-                                    try:
-                                        edad_conyuge = int(float(edad_conyuge_str))
-                                    except:
-                                        pass
-                                
-                                # Convertir hijos
-                                numero_hijos = 0
-                                if hijos_str:
-                                    try:
-                                        numero_hijos = int(float(hijos_str))
-                                    except:
-                                        pass
-                                
-                                # Crear persona desde Excel
-                                nueva_persona = lista_encontrada.agregar_persona(
-                                    nombre=nombre,
-                                    apellido=apellido,
-                                    direccion=direccion,
-                                    telefono=telefono,
-                                    edad=edad,
-                                    estado_civil=estado_civil,
-                                    numero_hijos=numero_hijos,
-                                    edades_hijos=edades_hijos,
-                                    nombre_conyuge=nombre_conyuge,
-                                    telefono_conyuge=telefono_conyuge,
-                                    edad_conyuge=edad_conyuge,
-                                    trabajo_conyuge=trabajo_conyuge,
-                                    fecha_matrimonio=fecha_matrimonio,
-                                    responsable=session.get('username', 'Usuario')
-                                )
-                                
-                                tarjetas_importadas += 1
-                                
-                            except Exception as e:
-                                errores.append(f'Fila {i}: Error - {str(e)}')
-                                continue
-                        
-                        # Mostrar resultados Excel
-                        if tarjetas_importadas > 0:
-                            flash(f'✅ Importadas {tarjetas_importadas} personas desde Excel', 'success')
-                        if errores:
-                            flash(f'⚠️ {len(errores)} errores encontrados', 'warning')
-                        if tarjetas_importadas == 0:
-                            flash('❌ No se importaron datos desde Excel', 'error')
-                            return redirect(request.url)
-                        
-                        return redirect(url_for('tableros.ver', tablero_id=tablero_encontrado.id))
-                            
-                    except ImportError:
-                        flash('openpyxl no instalado. Procesando como CSV...', 'warning')
-                        # Continuar con procesamiento CSV
-                    except Exception as e:
-                        flash(f'Error procesando Excel: {str(e)}', 'error')
-                        # Intentar procesar como CSV
-                
-                # Procesamiento para archivos CSV
-                if filename.endswith('.csv') or True:  # Fallback a CSV si Excel falla
-                    try:
-                        import csv
-                        import io
-                        
-                        # Leer el archivo
-                        archivo_contenido = archivo.read().decode('utf-8')
-                        
-                        # Detectar si es CSV o intentar como CSV
-                        lineas = archivo_contenido.strip().split('\n')
-                        
-                        if len(lineas) < 2:
-                            flash('El archivo debe tener al menos una fila de encabezados y una fila de datos', 'error')
-                            return redirect(request.url)
-                        
-                        # Leer como CSV
-                        csv_reader = csv.DictReader(io.StringIO(archivo_contenido))
-                        
-                        tarjetas_importadas = 0
-                        errores = []
-                        
-                        for i, fila in enumerate(csv_reader, start=2):  # Empezar en 2 porque la fila 1 son headers
-                            try:
-                                # Extraer datos de la fila (flexible con diferentes nombres de columnas)
-                                nombre_completo = (
-                                    fila.get('Nombre Completo', '') or 
-                                    fila.get('Nombre', '') or 
-                                    fila.get('Name', '') or
-                                    fila.get('nombre', '') or
-                                    fila.get('titulo', '') or
-                                    fila.get('Titulo', '')
-                                ).strip()
-                                
-                                direccion = (
-                                    fila.get('Dirección', '') or 
-                                    fila.get('Direccion', '') or 
-                                    fila.get('Address', '') or
-                                    fila.get('direccion', '') or
-                                    fila.get('Descripción', '') or
-                                    fila.get('Descripcion', '')
-                                ).strip()
-                                
-                                telefono = (
-                                    fila.get('Teléfono', '') or 
-                                    fila.get('Telefono', '') or 
-                                    fila.get('Phone', '') or
-                                    fila.get('telefono', '')
-                                ).strip()
-                                
-                                edad_str = (
-                                    fila.get('Edad', '') or 
-                                    fila.get('Age', '') or
-                                    fila.get('edad', '')
-                                ).strip()
-                                
-                                estado_civil = (
-                                    fila.get('Estado Civil', '') or 
-                                    fila.get('Estado_Civil', '') or
-                                    fila.get('Marital Status', '') or
-                                    fila.get('estado_civil', '')
-                                ).strip()
-                                
-                                hijos_str = (
-                                    fila.get('Num Hijos', '') or 
-                                    fila.get('Número de Hijos', '') or
-                                    fila.get('Numero de Hijos', '') or
-                                    fila.get('Children', '') or
-                                    fila.get('numero_hijos', '') or
-                                    '0'
-                                ).strip()
-                                
-                                edades_hijos = (
-                                    fila.get('Edades Hijos', '') or 
-                                    fila.get('Edades de Hijos', '') or
-                                    fila.get('edades_hijos', '')
-                                ).strip()
-                                
-                                # Campos del cónyuge - VERSIÓN CORREGIDA
-                                nombre_conyuge = (
-                                    fila.get('Nombre Cónyuge', '') or
-                                    fila.get('Nombre Conyuge', '') or  # Sin tilde
-                                    fila.get('nombre_conyuge', '')
-                                ).strip()
-                                
-                                telefono_conyuge = (
-                                    fila.get('Teléfono Cónyuge', '') or
-                                    fila.get('Telefono Conyuge', '') or  # Sin tilde
-                                    fila.get('telefono_conyuge', '')
-                                ).strip()
-                                
-                                # Edad del cónyuge
-                                edad_conyuge_str = (
-                                    fila.get('Edad Cónyuge', '') or
-                                    fila.get('Edad Conyuge', '') or  # Sin tilde
-                                    fila.get('edad_conyuge', '')
-                                ).strip()
-                                
-                                edad_conyuge = None
-                                if edad_conyuge_str:
-                                    try:
-                                        edad_conyuge = int(edad_conyuge_str)
-                                    except ValueError:
-                                        pass  # Mantener como None si no es válido
-                                
-                                # Trabajo del cónyuge
-                                trabajo_conyuge = (
-                                    fila.get('Trabajo Cónyuge', '') or
-                                    fila.get('Trabajo Conyuge', '') or  # Sin tilde
-                                    fila.get('trabajo_conyuge', '')
-                                ).strip()
-                                
-                                # Fecha de matrimonio
-                                fecha_matrimonio = (
-                                    fila.get('Fecha Matrimonio', '') or
-                                    fila.get('fecha_matrimonio', '')
-                                ).strip()
-                                
-                                # Validaciones básicas
-                                if not nombre_completo:
-                                    errores.append(f"Fila {i}: Nombre es obligatorio")
-                                    continue
-                                
-                                # Separar nombre y apellido si viene junto
-                                partes_nombre = nombre_completo.split(' ', 1)
-                                nombre = partes_nombre[0] if partes_nombre else nombre_completo
-                                apellido = partes_nombre[1] if len(partes_nombre) > 1 else ''
-                                
-                                # Convertir edad
-                                edad = None
-                                if edad_str:
-                                    try:
-                                        edad = int(edad_str)
-                                    except ValueError:
-                                        errores.append(f"Fila {i}: Edad '{edad_str}' no es un número válido")
-                                
-                                # Convertir número de hijos
-                                numero_hijos = 0
-                                if hijos_str:
-                                    try:
-                                        numero_hijos = int(hijos_str)
-                                    except ValueError:
-                                        errores.append(f"Fila {i}: Número de hijos '{hijos_str}' no es válido")
-                                
-                                # Crear la persona usando el método correcto con TODOS los campos
-                                nueva_persona = lista_encontrada.agregar_persona(
-                                    nombre=nombre,
-                                    apellido=apellido,
-                                    direccion=direccion,
-                                    telefono=telefono,
-                                    edad=edad,
-                                    estado_civil=estado_civil,
-                                    numero_hijos=numero_hijos,
-                                    edades_hijos=edades_hijos,
-                                    nombre_conyuge=nombre_conyuge,
-                                    telefono_conyuge=telefono_conyuge,
-                                    edad_conyuge=edad_conyuge,
-                                    trabajo_conyuge=trabajo_conyuge,
-                                    fecha_matrimonio=fecha_matrimonio,
-                                    responsable=session.get('username', 'Usuario')
-                                )
-                                
-                                tarjetas_importadas += 1
-                                
-                            except Exception as e:
-                                errores.append(f"Fila {i}: Error procesando datos - {str(e)}")
-                                continue
-                        
-                        # Mostrar resultados
-                        if tarjetas_importadas > 0:
-                            flash(f'✅ Se importaron {tarjetas_importadas} personas exitosamente', 'success')
-                        
-                        if errores:
-                            flash(f'⚠️ Se encontraron {len(errores)} errores: {"; ".join(errores[:3])}{"..." if len(errores) > 3 else ""}', 'warning')
-                        
-                        if tarjetas_importadas == 0:
-                            flash('❌ No se importó ninguna persona. Verifica el formato del archivo.', 'error')
-                            return redirect(request.url)
-                        
-                        return redirect(url_for('tableros.ver', tablero_id=tablero_encontrado.id))
-                        
-                    except Exception as e:
-                        flash(f'Error procesando el archivo: {str(e)}', 'error')
-                        return redirect(request.url)
+            # Usar el excel_handler para procesar el archivo
+            from app.utils.excel_handler import process_import_file
+            
+            personas_data, errores, file_type, columnas_faltantes = process_import_file(archivo, archivo.filename)
+            
+            if columnas_faltantes:
+                flash(f'⚠️ Advertencia: No se encontraron las siguientes columnas: {", ".join(columnas_faltantes)}. Verifica los encabezados de tu archivo.', 'warning')
+            
+            # Importar personas a la lista
+            tarjetas_importadas = 0
+            for persona_data in personas_data:
+                try:
+                    lista_encontrada.agregar_persona(
+                        responsable=session.get('username', 'Usuario'),
+                        **persona_data
+                    )
+                    tarjetas_importadas += 1
+                except Exception as e:
+                    errores.append(f'Error creando persona: {str(e)}')
+            
+            # Guardar cambios a disco
+            storage.save_to_disk()
+            
+            # Mostrar resultados
+            if tarjetas_importadas > 0:
+                flash(f'✅ Se importaron {tarjetas_importadas} personas exitosamente', 'success')
+            
+            if errores:
+                flash(f'⚠️ Se encontraron {len(errores)} errores: {"; ".join(errores[:3])}{"..." if len(errores) > 3 else ""}', 'warning')
+            
+            if tarjetas_importadas == 0:
+                flash('❌ No se importó ninguna persona. Verifica el formato del archivo.', 'error')
+                return redirect(request.url)
+            
+            return redirect(url_for('tableros.ver', tablero_id=tablero_encontrado.id))
                     
     except Exception as e:
         flash(f'Error en la importación: {str(e)}', 'error')
@@ -854,7 +737,36 @@ def eliminar_lista(lista_id):
                     }), 400
                 
                 # Eliminar lista usando el método existente
+                nombre_lista = lista.nombre
+                
+                # Guardar datos para Undo
+                posicion = -1
+                try:
+                    posicion = tablero.orden_listas.index(lista_id)
+                except ValueError:
+                    pass
+                
+                lista_data = lista.to_dict()
+                
                 tablero.eliminar_lista(lista_id)
+                
+                # Registrar en historial
+                tablero.registrar_accion(
+                    session.get('username', 'Usuario'),
+                    'Eliminar Lista',
+                    f'Se eliminó la lista "{nombre_lista}"'
+                )
+                
+                # Registrar Undo
+                tablero.registrar_undo(
+                    'eliminar_lista',
+                    {
+                        'lista_data': lista_data,
+                        'posicion': posicion
+                    }
+                )
+                
+                storage.save_to_disk()
                 
                 return jsonify({
                     'success': True,
@@ -876,11 +788,39 @@ def eliminar_tarjeta(tarjeta_id):
     try:
         # Buscar la tarjeta en todos los tableros y listas
         for tablero in storage.get_all_tableros():
-            for lista in tablero.listas:
+            for lista in tablero.listas.values():
                 tarjeta = lista.get_tarjeta(tarjeta_id)
                 if tarjeta:
+                    # Guardar datos para Undo
+                    posicion = -1
+                    try:
+                        posicion = lista.tarjetas.index(tarjeta)
+                    except ValueError:
+                        pass
+                    
+                    tarjeta_data = tarjeta.to_dict()
+                    
                     # Eliminar tarjeta usando el método existente
+                    nombre_tarjeta = tarjeta.nombre_completo
                     lista.eliminar_tarjeta(tarjeta_id)
+                    
+                    # Registrar Undo
+                    tablero.registrar_undo(
+                        'eliminar_tarjeta',
+                        {
+                            'tarjeta_data': tarjeta_data,
+                            'lista_id': lista.id,
+                            'posicion': posicion
+                        }
+                    )
+                    
+                    # Registrar en historial
+                    tablero.registrar_accion(
+                        session.get('username', 'Usuario'),
+                        'Eliminar Tarjeta',
+                        f'Se eliminó a "{nombre_tarjeta}" de la lista "{lista.nombre}"'
+                    )
+                    storage.save_to_disk()
                     
                     return jsonify({
                         'success': True,
@@ -891,6 +831,75 @@ def eliminar_tarjeta(tarjeta_id):
         
     except Exception as e:
         return jsonify({'error': f'Error interno: {str(e)}'}), 500
+
+
+@tableros_bp.route('/<tablero_id>/lista/editar', methods=['POST'])
+# Assuming login_required is defined elsewhere, if not, replace with session check
+# @login_required 
+def editar_lista_api(tablero_id):
+    if "user_id" not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    tablero = storage.get_tablero(tablero_id)
+    if not tablero:
+        return jsonify({'success': False, 'error': 'Tablero no encontrado'}), 404
+        
+    data = request.json
+    lista_id = data.get('lista_id')
+    nombre = data.get('nombre')
+    color = data.get('color')
+    
+    if not lista_id or not nombre:
+        return jsonify({'success': False, 'error': 'Faltan datos requeridos'}), 400
+        
+    # Find the list within the tablero
+    lista_encontrada = tablero.get_lista(lista_id)
+    if lista_encontrada:
+        lista_encontrada.nombre = nombre
+        lista_encontrada.color = color
+        storage.save_to_disk()
+        return jsonify({'success': True, 'message': 'Lista actualizada exitosamente'})
+    
+    return jsonify({'success': False, 'error': 'Lista no encontrada'}), 404
+
+@tableros_bp.route('/<tablero_id>/lista/eliminar', methods=['POST'])
+# Assuming login_required is defined elsewhere, if not, replace with session check
+# @login_required
+def eliminar_lista_api(tablero_id):
+    if "user_id" not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+        
+    tablero = storage.get_tablero(tablero_id)
+    if not tablero:
+        return jsonify({'success': False, 'error': 'Tablero no encontrado'}), 404
+        
+    data = request.json
+    lista_id = data.get('lista_id')
+    
+    if not lista_id:
+        return jsonify({'success': False, 'error': 'Falta ID de lista'}), 400
+        
+    # Eliminar la lista directamente (el frontend pedirá confirmación)
+    if tablero.eliminar_lista(lista_id):
+        storage.save_to_disk()
+        return jsonify({'success': True, 'message': 'Lista eliminada exitosamente'})
+    
+    return jsonify({'success': False, 'error': 'Lista no encontrada'}), 404
+
+@tableros_bp.route("/eliminar/<tablero_id>", methods=["POST"])
+def eliminar(tablero_id):
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+    
+    tablero = storage.get_tablero(tablero_id)
+    if not tablero:
+        flash("Tablero no encontrado", "error")
+        return redirect(url_for("tableros.lista"))
+    
+    # Eliminar tablero
+    storage.eliminar_tablero(tablero_id)
+    flash(f"Tablero '{tablero.nombre}' eliminado exitosamente", "success")
+    return redirect(url_for("tableros.lista"))
 
 
 @tableros_bp.route("/editar/<tablero_id>", methods=["GET", "POST"])
@@ -976,7 +985,7 @@ def editar_tarjeta(lista_id, tarjeta_id):
     tablero_encontrado = None
     
     for tablero in storage.get_all_tableros():
-        for lista in tablero.listas:
+        for lista in tablero.listas.values():
             tarjeta = lista.get_tarjeta(tarjeta_id)
             if tarjeta:
                 tarjeta_encontrada = tarjeta
@@ -1000,58 +1009,271 @@ def editar_tarjeta(lista_id, tarjeta_id):
     elif request.method == 'POST':
         # Procesar edición completa con todos los campos
         try:
-            # Información básica
-            nombre = request.form.get('nombre', '').strip()
-            apellido = request.form.get('apellido', '').strip()
+            # Información Personal
+            tarjeta_encontrada.nombre = request.form.get('nombre', '').strip()
+            tarjeta_encontrada.apellido = request.form.get('apellido', '').strip()
+            tarjeta_encontrada.edad = int(request.form.get('edad')) if request.form.get('edad') else None
+            tarjeta_encontrada.estado_civil = request.form.get('estado_civil', '')
+            tarjeta_encontrada.ocupacion = request.form.get('ocupacion', '')
             
-            if not nombre:
-                flash('El nombre es requerido', 'error')
-                return redirect(request.url)
-            
-            # Actualizar todos los campos de persona
-            tarjeta_encontrada.nombre = nombre
-            tarjeta_encontrada.apellido = apellido
+            # Contacto y Ubicación
             tarjeta_encontrada.telefono = request.form.get('telefono', '').strip()
             tarjeta_encontrada.email = request.form.get('email', '').strip()
             tarjeta_encontrada.direccion = request.form.get('direccion', '').strip()
             
-            # Edad (convertir a entero si existe)
-            edad_str = request.form.get('edad', '').strip()
-            tarjeta_encontrada.edad = int(edad_str) if edad_str else None
+            # Información Familiar
+            tarjeta_encontrada.numero_hijos = int(request.form.get('numero_hijos', 0))
+            tarjeta_encontrada.edades_hijos = request.form.get('edades_hijos', '')
+            tarjeta_encontrada.nombre_conyuge = request.form.get('nombre_conyuge', '')
+            tarjeta_encontrada.telefono_conyuge = request.form.get('telefono_conyuge', '')
             
-            # Información familiar
-            tarjeta_encontrada.estado_civil = request.form.get('estado_civil', '').strip()
-            
-            # Número de hijos (convertir a entero)
-            numero_hijos_str = request.form.get('numero_hijos', '0').strip()
-            tarjeta_encontrada.numero_hijos = int(numero_hijos_str) if numero_hijos_str else 0
-            
-            tarjeta_encontrada.edades_hijos = request.form.get('edades_hijos', '').strip()
-            tarjeta_encontrada.ocupacion = request.form.get('ocupacion', '').strip()
-            
-            # Información del cónyuge
-            tarjeta_encontrada.nombre_conyuge = request.form.get('nombre_conyuge', '').strip()
-            tarjeta_encontrada.telefono_conyuge = request.form.get('telefono_conyuge', '').strip()
-            
-            # Información adicional
-            tarjeta_encontrada.responsable = request.form.get('responsable', '').strip()
-            tarjeta_encontrada.estado = request.form.get('estado', 'activa').strip()
+            # Información Adicional
+            tarjeta_encontrada.responsable = request.form.get('responsable', '')
+            tarjeta_encontrada.estado = request.form.get('estado', 'activa')
             tarjeta_encontrada.notas = request.form.get('notas', '').strip()
+            
+            # Campos Eclesiásticos
+            tarjeta_encontrada.bautizado = 'bautizado' in request.form
+            tarjeta_encontrada.asiste_grupo = 'asiste_grupo' in request.form
+            tarjeta_encontrada.es_lider = 'es_lider' in request.form
+            tarjeta_encontrada.ministerio = request.form.get('ministerio', '')
             
             # Actualizar campos calculados
             tarjeta_encontrada.titulo = tarjeta_encontrada.nombre_completo
             tarjeta_encontrada.descripcion = tarjeta_encontrada.direccion
             tarjeta_encontrada.fecha_actualizacion = datetime.now()
             
-            flash(f'Persona "{tarjeta_encontrada.nombre_completo}" actualizada exitosamente', 'success')
+            storage.save_to_disk()
+            
+            flash(f'Tarjeta "{tarjeta_encontrada.nombre_completo}" actualizada exitosamente', 'success')
             return redirect(url_for('tableros.ver', tablero_id=tablero_encontrado.id))
             
-        except ValueError as e:
-            flash(f'Error en los datos: {str(e)}', 'error')
-            return redirect(request.url)
         except Exception as e:
-            flash(f'Error al actualizar la persona: {str(e)}', 'error')
+            flash(f'Error actualizando tarjeta: {str(e)}', 'error')
             return redirect(request.url)
+
+# ===== RUTAS DE CLUSTERING GEOGRÁFICO =====
+
+@tableros_bp.route("/api/geocoding/get_uncoded", methods=["POST"])
+def get_uncoded_people():
+    """Obtener personas que necesitan geocodificación"""
+    if "user_id" not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+        
+    try:
+        data = request.json
+        tablero_id = data.get('tablero_id')
+        
+        tablero = storage.get_tablero(tablero_id)
+        if not tablero:
+            return jsonify({'error': 'Tablero no encontrado'}), 404
+            
+        personas_to_code = []
+        personas = tablero.get_todas_las_personas()
+        
+        print(f"DEBUG: Checking {len(personas)} people for geocoding in tablero {tablero.nombre}")
+        
+        for p_dict in personas:
+            # Buscar la tarjeta real
+            tarjeta = None
+            for lista in tablero.listas.values():
+                t = lista.get_tarjeta(p_dict['id'])
+                if t:
+                    tarjeta = t
+                    break
+            
+            if tarjeta:
+                # Debug info for each person with address
+                if tarjeta.direccion:
+                    print(f"DEBUG: Person {tarjeta.nombre_completo} has address: '{tarjeta.direccion}'. Lat: {tarjeta.latitud}, Lng: {tarjeta.longitud}")
+                
+                # Check if needs geocoding (address exists, and coords are missing or 0)
+                has_address = bool(tarjeta.direccion and tarjeta.direccion.strip())
+                needs_coords = (tarjeta.latitud == 0 and tarjeta.longitud == 0) or tarjeta.latitud is None
+                
+                if has_address and needs_coords:
+                    print(f"DEBUG: Adding {tarjeta.nombre_completo} to geocode list")
+                    personas_to_code.append({
+                        'id': tarjeta.id,
+                        'nombre': tarjeta.nombre_completo,
+                        'direccion': tarjeta.direccion
+                    })
+        
+        return jsonify({
+            'success': True, 
+            'personas': personas_to_code,
+            'count': len(personas_to_code)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@tableros_bp.route("/api/personas/update_coords", methods=["POST"])
+def update_person_coords():
+    """Actualizar coordenadas de una persona específica"""
+    if "user_id" not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+        
+    try:
+        data = request.json
+        tablero_id = data.get('tablero_id')
+        persona_id = data.get('persona_id')
+        lat = data.get('lat')
+        lng = data.get('lng')
+        
+        tablero = storage.get_tablero(tablero_id)
+        if not tablero:
+            return jsonify({'error': 'Tablero no encontrado'}), 404
+            
+        # Buscar persona
+        tarjeta_encontrada = None
+        for lista in tablero.listas.values():
+            t = lista.get_tarjeta(persona_id)
+            if t:
+                tarjeta_encontrada = t
+                break
+        
+        if tarjeta_encontrada:
+            tarjeta_encontrada.latitud = float(lat)
+            tarjeta_encontrada.longitud = float(lng)
+            storage.save_to_disk()
+            return jsonify({'success': True})
+        else:
+            return jsonify({'error': 'Persona no encontrada'}), 404
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@tableros_bp.route("/api/clustering/preview", methods=["POST"])
+def preview_clustering():
+    """Generar vista previa de clusters"""
+    if "user_id" not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+        
+    try:
+        data = request.json
+        tablero_id = data.get('tablero_id')
+        max_distance = float(data.get('max_distance', 2.0)) # Millas
+        min_size = int(data.get('min_size', 5))
+        max_size = int(data.get('max_size', 12))
+        
+        tablero = storage.get_tablero(tablero_id)
+        if not tablero:
+            return jsonify({'error': 'Tablero no encontrado'}), 404
+            
+        # Obtener personas con coordenadas
+        personas = [p for p in tablero.get_todas_las_personas() if p.get('latitud') and p.get('longitud')]
+        
+        if not personas:
+            return jsonify({'success': False, 'message': 'No hay personas con coordenadas para agrupar'})
+            
+        from app.utils.clustering import ClusteringManager
+        # No necesitamos API key para el algoritmo, solo para geocoding
+        cluster_manager = ClusteringManager("") 
+        
+        clusters = cluster_manager.create_clusters(personas, max_distance, min_size, max_size)
+        
+        return jsonify({
+            'success': True,
+            'clusters': clusters,
+            'total_clustered': sum(c['count'] for c in clusters)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@tableros_bp.route("/api/clustering/apply", methods=["POST"])
+def apply_clustering():
+    """Crear listas basadas en los clusters"""
+    if "user_id" not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+        
+    try:
+        data = request.json
+        tablero_id = data.get('tablero_id')
+        clusters = data.get('clusters', [])
+        
+        print(f"DEBUG: apply_clustering called for tablero {tablero_id} with {len(clusters)} clusters")
+        print(f"DEBUG: Clusters data: {json.dumps(clusters, indent=2)}")
+        
+        tablero = storage.get_tablero(tablero_id)
+        if not tablero:
+            print(f"DEBUG: Tablero {tablero_id} not found")
+            return jsonify({'error': 'Tablero no encontrado'}), 404
+            
+        if not clusters:
+             print("DEBUG: No clusters provided")
+             return jsonify({'success': False, 'message': 'No hay grupos para crear.'})
+            
+        created_lists = 0
+        moved_people = 0
+        
+        # Paleta de colores distintivos para los grupos
+        colores_grupos = [
+            "#EF4444", # Rojo
+            "#F59E0B", # Ambar
+            "#10B981", # Esmeralda
+            "#3B82F6", # Azul
+            "#6366F1", # Indigo
+            "#8B5CF6", # Violeta
+            "#EC4899", # Rosa
+            "#F97316", # Naranja
+            "#84CC16", # Lima
+            "#06B6D4", # Cyan
+            "#14B8A6", # Teal
+            "#64748B", # Slate
+            "#A855F7", # Purple
+            "#D946EF", # Fuchsia
+            "#F43F5E", # Rose
+            "#EAB308", # Yellow
+            "#22C55E", # Green
+            "#0EA5E9", # Sky
+            "#4F46E5", # Indigo
+            "#C026D3"  # Fuchsia Dark
+        ]
+        
+        for i, cluster in enumerate(clusters):
+            if cluster.get('is_outlier'):
+                continue
+                
+            # Crear nueva lista con color rotativo
+            nombre_lista = f"Grupo Geográfico {i+1}"
+            color_asignado = colores_grupos[i % len(colores_grupos)]
+            nueva_lista = tablero.agregar_lista(nombre_lista, color=color_asignado)
+            created_lists += 1
+            
+            # Mover personas a la nueva lista
+            for member in cluster['members']:
+                # Buscar persona en su lista actual
+                tarjeta_mover = None
+                lista_origen = None
+                
+                for lista in tablero.listas.values():
+                    t = lista.get_tarjeta(member['id'])
+                    if t:
+                        tarjeta_mover = t
+                        lista_origen = lista
+                        break
+                
+                if tarjeta_mover and lista_origen:
+                    # Mover
+                    lista_origen.eliminar_tarjeta(tarjeta_mover.id)
+                    nueva_lista.tarjetas.append(tarjeta_mover)
+                    moved_people += 1
+        
+        storage.save_to_disk()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Se crearon {created_lists} listas con {moved_people} personas.',
+            'created_lists': created_lists
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+            
+
 
 
 @tableros_bp.route("/descargar/<formato>")
@@ -1077,29 +1299,28 @@ def exportar_datos(tablero_id, formato):
         
         # Recopilar todos los datos
         datos_exportacion = []
-        for lista in tablero.listas:
+        for lista in tablero.listas.values():
             for tarjeta in lista.tarjetas:
                 # Convertir tarjeta a diccionario con información completa
+                # IMPORTANTE: Los nombres de columnas deben coincidir con excel_handler.py
                 persona_data = {
                     'Lista': lista.nombre,
-                    'Nombre Completo': getattr(tarjeta, 'nombre_completo', tarjeta.titulo or ''),
-                    'Nombre': getattr(tarjeta, 'nombre', ''),
-                    'Apellido': getattr(tarjeta, 'apellido', ''),
-                    'Teléfono': getattr(tarjeta, 'telefono', ''),
-                    'Email': getattr(tarjeta, 'email', ''),
+                    'Nombre': getattr(tarjeta, 'nombre_completo', tarjeta.titulo or ''),
                     'Dirección': getattr(tarjeta, 'direccion', tarjeta.descripcion or ''),
+                    'Teléfono': getattr(tarjeta, 'telefono', ''),
                     'Edad': getattr(tarjeta, 'edad', ''),
                     'Estado Civil': getattr(tarjeta, 'estado_civil', ''),
-                    'Número de Hijos': getattr(tarjeta, 'numero_hijos', ''),
-                    'Edades de Hijos': getattr(tarjeta, 'edades_hijos', ''),
-                    'Ocupación': getattr(tarjeta, 'ocupacion', ''),
+                    'Num Hijos': getattr(tarjeta, 'numero_hijos', ''),
+                    'Edades Hijos': getattr(tarjeta, 'edades_hijos', ''),
                     'Nombre Cónyuge': getattr(tarjeta, 'nombre_conyuge', ''),
+                    'Edad Cónyuge': getattr(tarjeta, 'edad_conyuge', ''),
                     'Teléfono Cónyuge': getattr(tarjeta, 'telefono_conyuge', ''),
+                    'Trabajo Cónyuge': getattr(tarjeta, 'trabajo_conyuge', ''),
+                    'Fecha Matrimonio': getattr(tarjeta, 'fecha_matrimonio', ''),
+                    'Ocupación': getattr(tarjeta, 'ocupacion', ''),
+                    'Email': getattr(tarjeta, 'email', ''),
                     'Responsable': getattr(tarjeta, 'responsable', ''),
-                    'Estado': getattr(tarjeta, 'estado', 'activa'),
                     'Notas': getattr(tarjeta, 'notas', ''),
-                    'Fecha Creación': getattr(tarjeta, 'fecha_creacion', ''),
-                    'Fecha Actualización': getattr(tarjeta, 'fecha_actualizacion', '')
                 }
                 datos_exportacion.append(persona_data)
         
@@ -1252,13 +1473,334 @@ def mover_lista():
             return jsonify({'error': 'Lista no encontrada'}), 404
         
         # Reordenar lista en el tablero
-        tablero_encontrado.listas.remove(lista_encontrada)
-        tablero_encontrado.listas.insert(nueva_posicion, lista_encontrada)
-        
-        return jsonify({
-            'success': True,
-            'message': 'Lista reordenada exitosamente'
-        }), 200
+        if lista_id in tablero_encontrado.orden_listas:
+            tablero_encontrado.orden_listas.remove(lista_id)
+            # Asegurar que el índice sea válido
+            if nueva_posicion < 0:
+                nueva_posicion = 0
+            elif nueva_posicion > len(tablero_encontrado.orden_listas):
+                nueva_posicion = len(tablero_encontrado.orden_listas)
+                
+            tablero_encontrado.orden_listas.insert(nueva_posicion, lista_id)
+            storage.save_to_disk()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Lista reordenada exitosamente'
+            }), 200
+        else:
+             return jsonify({'error': 'ID de lista no encontrado en el orden del tablero'}), 400
         
     except Exception as e:
         return jsonify({'error': f'Error interno: {str(e)}'}), 500
+
+
+@tableros_bp.route("/api/deshacer", methods=["POST"])
+def deshacer_accion():
+    """Deshacer la última acción"""
+    if "user_id" not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+        
+    try:
+        data = request.json
+        tablero_id = data.get('tablero_id')
+        
+        tablero = storage.get_tablero(tablero_id)
+        if not tablero:
+            return jsonify({'error': 'Tablero no encontrado'}), 404
+            
+        if not tablero.undo_stack:
+            return jsonify({'error': 'No hay acciones para deshacer'}), 400
+            
+        # Obtener última acción
+        undo_action = tablero.undo_stack.pop()
+        action_type = undo_action['type']
+        undo_data = undo_action['data']
+        
+        print(f"Deshaciendo acción: {action_type}")
+        
+        if action_type == 'mover_tarjeta':
+            tarjeta_id = undo_data['tarjeta_id']
+            lista_origen_id = undo_data['lista_origen_id']
+            lista_destino_id = undo_data['lista_destino_id']
+            nueva_posicion = undo_data['nueva_posicion']
+            
+            # Buscar tarjeta y listas
+            tarjeta = None
+            lista_origen = tablero.get_lista(lista_origen_id)
+            lista_destino = tablero.get_lista(lista_destino_id)
+            
+            # Buscar tarjeta en cualquier lista (debería estar en lista_origen actual, que es la destino original)
+            for l in tablero.listas.values():
+                t = l.get_tarjeta(tarjeta_id)
+                if t:
+                    tarjeta = t
+                    # Remover de donde esté
+                    l.tarjetas.remove(t)
+                    break
+            
+            if tarjeta and lista_destino:
+                lista_destino.tarjetas.insert(nueva_posicion, tarjeta)
+                
+        elif action_type == 'eliminar_tarjeta':
+            tarjeta_data = undo_data['tarjeta_data']
+            lista_id = undo_data['lista_id']
+            posicion = undo_data['posicion']
+            
+            lista = tablero.get_lista(lista_id)
+            if lista:
+                # Recrear tarjeta
+                tarjeta = storage._deserialize_tarjeta(tarjeta_data)
+                if posicion >= 0 and posicion <= len(lista.tarjetas):
+                    lista.tarjetas.insert(posicion, tarjeta)
+                else:
+                    lista.tarjetas.append(tarjeta)
+                    
+        elif action_type == 'crear_tarjeta':
+            tarjeta_id = undo_data['tarjeta_id']
+            lista_id = undo_data['lista_id']
+            
+            lista = tablero.get_lista(lista_id)
+            if lista:
+                lista.eliminar_tarjeta(tarjeta_id)
+                
+        elif action_type == 'eliminar_lista':
+            lista_data = undo_data['lista_data']
+            posicion = undo_data['posicion']
+            
+            # Recrear lista
+            lista = storage._deserialize_lista(lista_data)
+            tablero.listas[lista.id] = lista
+            
+            if posicion >= 0 and posicion <= len(tablero.orden_listas):
+                tablero.orden_listas.insert(posicion, lista.id)
+            else:
+                tablero.orden_listas.append(lista.id)
+                
+        elif action_type == 'crear_lista':
+            lista_id = undo_data['lista_id']
+            tablero.eliminar_lista(lista_id)
+            
+        elif action_type == 'bulk_move':
+            moves = undo_data['moves']
+            # Revertir cada movimiento
+            for move in moves:
+                tarjeta_id = move['tarjeta_id']
+                lista_origen_id = move['lista_origen_id']
+                # lista_destino_id = move['lista_destino_id'] # No needed for undo
+                
+                # Mover tarjeta de vuelta a origen
+                tarjeta = None
+                # Buscar tarjeta
+                for l in tablero.listas.values():
+                    t = l.get_tarjeta(tarjeta_id)
+                    if t:
+                        tarjeta = t
+                        l.tarjetas.remove(t)
+                        break
+                
+                if tarjeta:
+                    lista_origen = tablero.get_lista(lista_origen_id)
+                    if lista_origen:
+                        index = move.get('index', -1)
+                        if index >= 0 and index <= len(lista_origen.tarjetas):
+                            lista_origen.tarjetas.insert(index, tarjeta)
+                        else:
+                            lista_origen.tarjetas.append(tarjeta)
+
+        elif action_type == 'bulk_delete':
+            deleted_cards = undo_data['deleted_cards']
+            # Restaurar cada tarjeta
+            for item in deleted_cards:
+                tarjeta_data = item['tarjeta_data']
+                lista_id = item['lista_id']
+                
+                lista = tablero.get_lista(lista_id)
+                if lista:
+                    tarjeta = storage._deserialize_tarjeta(tarjeta_data)
+                    index = item.get('index', -1)
+                    if index >= 0 and index <= len(lista.tarjetas):
+                        lista.tarjetas.insert(index, tarjeta)
+                    else:
+                        lista.tarjetas.append(tarjeta)
+
+        # Registrar en historial que se deshizo
+        tablero.registrar_accion(
+            session.get('username', 'Usuario'),
+            'Deshacer',
+            f'Se deshizo la acción: {action_type}'
+        )
+        
+        storage.save_to_disk()
+        
+        return jsonify({'success': True, 'message': 'Acción deshecha exitosamente'})
+        
+    except Exception as e:
+        print(f"Error en deshacer: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@tableros_bp.route("/api/bulk/move", methods=["POST"])
+def bulk_move():
+    """Mover múltiples tarjetas"""
+    if "user_id" not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+        
+    try:
+        data = request.json
+        tablero_id = data.get('tablero_id')
+        tarjeta_ids = data.get('tarjeta_ids', [])
+        lista_destino_id = data.get('lista_destino_id')
+        
+        if not tarjeta_ids or not lista_destino_id:
+            return jsonify({'error': 'Datos incompletos'}), 400
+            
+        tablero = storage.get_tablero(tablero_id)
+        if not tablero:
+            return jsonify({'error': 'Tablero no encontrado'}), 404
+            
+        lista_destino = tablero.get_lista(lista_destino_id)
+        if not lista_destino:
+            return jsonify({'error': 'Lista destino no encontrada'}), 404
+            
+        moves_recorded = []
+        count = 0
+        
+        for tarjeta_id in tarjeta_ids:
+            # Buscar tarjeta y su lista actual
+            tarjeta = None
+            lista_origen = None
+            
+            for l in tablero.listas.values():
+                t = l.get_tarjeta(tarjeta_id)
+                if t:
+                    tarjeta = t
+                    lista_origen = l
+                    break
+            
+            if tarjeta and lista_origen:
+                # Si ya está en la lista destino, saltar
+                if lista_origen.id == lista_destino.id:
+                    continue
+                    
+                # Guardar índice original
+                try:
+                    index = lista_origen.tarjetas.index(tarjeta)
+                except ValueError:
+                    index = -1
+
+                # Mover
+                lista_origen.tarjetas.remove(tarjeta)
+                lista_destino.tarjetas.append(tarjeta)
+                
+                moves_recorded.append({
+                    'tarjeta_id': tarjeta.id,
+                    'lista_origen_id': lista_origen.id,
+                    'lista_destino_id': lista_destino.id,
+                    'index': index
+                })
+                count += 1
+        
+        if count > 0:
+            # Registrar historial
+            tablero.registrar_accion(
+                session.get('username', 'Usuario'),
+                'Mover Tarjetas',
+                f'Se movieron {count} tarjetas a "{lista_destino.nombre}"'
+            )
+            
+            # Registrar Undo
+            tablero.registrar_undo(
+                'bulk_move',
+                {
+                    'moves': moves_recorded
+                }
+            )
+            
+            storage.save_to_disk()
+            
+        return jsonify({'success': True, 'count': count})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tableros_bp.route("/api/bulk/delete", methods=["POST"])
+def bulk_delete():
+    """Eliminar múltiples tarjetas"""
+    if "user_id" not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+        
+    try:
+        data = request.json
+        tablero_id = data.get('tablero_id')
+        tarjeta_ids = data.get('tarjeta_ids', [])
+        
+        if not tarjeta_ids:
+            return jsonify({'error': 'Datos incompletos'}), 400
+            
+        tablero = storage.get_tablero(tablero_id)
+        if not tablero:
+            return jsonify({'error': 'Tablero no encontrado'}), 404
+            
+        deleted_cards = []
+        count = 0
+        
+        for tarjeta_id in tarjeta_ids:
+            # Buscar tarjeta
+            for l in tablero.listas.values():
+                t = l.get_tarjeta(tarjeta_id)
+                if t:
+                    # Guardar datos para undo
+                    try:
+                        index = l.tarjetas.index(t)
+                    except ValueError:
+                        index = -1
+                        
+                    deleted_cards.append({
+                        'tarjeta_data': t.to_dict(),
+                        'lista_id': l.id,
+                        'index': index
+                    })
+                    # Eliminar
+                    l.tarjetas.remove(t)
+                    count += 1
+                    break
+        
+        if count > 0:
+            # Registrar historial
+            tablero.registrar_accion(
+                session.get('username', 'Usuario'),
+                'Eliminar Tarjetas',
+                f'Se eliminaron {count} tarjetas'
+            )
+            
+            # Registrar Undo
+            tablero.registrar_undo(
+                'bulk_delete',
+                {
+                    'deleted_cards': deleted_cards
+                }
+            )
+            
+            storage.save_to_disk()
+            
+        return jsonify({'success': True, 'count': count})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tableros_bp.route("/api/tablero/<tablero_id>/data")
+def get_tablero_data(tablero_id):
+    """Obtener datos del tablero en JSON"""
+    if "user_id" not in session:
+        return jsonify({'error': 'No autorizado'}), 401
+        
+    tablero = storage.get_tablero(tablero_id)
+    if not tablero:
+        return jsonify({'error': 'Tablero no encontrado'}), 404
+        
+    return jsonify(tablero.to_dict())

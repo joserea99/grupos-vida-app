@@ -9,6 +9,14 @@ class Config:
     DATABASE_URL = os.environ.get('DATABASE_URL') or 'sqlite:///ministerio.db'
     UPLOADS_FOLDER = os.environ.get('UPLOADS_FOLDER') or 'app/static/uploads'
     MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH') or 16777216)
+    GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY') or ''
+    
+    # Stripe Configuration
+    # Stripe Configuration
+    STRIPE_PUBLIC_KEY = os.environ.get('STRIPE_PUBLIC_KEY') or 'pk_test_tu_clave_publica'
+    STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY') or 'sk_test_tu_clave_secreta'
+    STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET') or ''
+    STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID') or 'price_tu_id_de_precio'
 
 class DevelopmentConfig(Config):
     """Configuración de desarrollo"""

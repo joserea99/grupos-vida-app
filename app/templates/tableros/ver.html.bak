@@ -1620,7 +1620,7 @@
                                     {% if tarjeta.telefono %}
                                     <div class="card-detail">
                                         <i class="fas fa-phone detail-icon"></i>
-                                        <span>{{ tarjeta.telefono }}</span>
+                                        <span>{{ tarjeta.telefono }}{% if tarjeta.nombre_conyuge %}<br><small style="color: #f59e0b;">💑 {{ tarjeta.nombre_conyuge }}</small>{% endif %}</span>
                                     </div>
                                     {% endif %}
                                     
@@ -2014,7 +2014,7 @@
                         id: '{{ tarjeta.id }}',
                         nombre_completo: '{{ tarjeta.nombre_completo }}',
                         direccion: '{{ tarjeta.direccion }}',
-                        telefono: '{{ tarjeta.telefono }}',
+                        telefono: '{{ tarjeta.telefono }}{% if tarjeta.nombre_conyuge %}<br><small style="color: #f59e0b;">💑 {{ tarjeta.nombre_conyuge }}</small>{% endif %}',
                         edad: {{ tarjeta.edad if tarjeta.edad else 'null' }},
                         estado_civil: '{{ tarjeta.estado_civil }}',
                         numero_hijos: {{ tarjeta.numero_hijos if tarjeta.numero_hijos else 0 }},
@@ -3914,106 +3914,545 @@
 
         // 🎯 FUNCIONES MEJORADAS DE AGRUPACIÓN (RESTO DEL CÓDIGO ORIGINAL)
 
-        function agruparPorCercaniaMejorado() {
-            console.log('🚀 Iniciando agrupación mejorada...');
+        // 🎯 FUNCIÓN MEJORADA: Prioriza proximidad real sobre balanceo
+function agruparPorCercaniaMejorado() {
+    console.log('🚀 Iniciando agrupación geográfica optimizada para proximidad real...');
+    
+    const radioElement = document.getElementById('radioAgrupacion');
+    const minimoElement = document.getElementById('minimoPersonas');
+    const maximoElement = document.getElementById('maximoPersonas');
+    
+    if (!radioElement || !minimoElement || !maximoElement) {
+        mostrarNotificacion('❌ Error: Controles de agrupación no encontrados', 'error');
+        return;
+    }
+    
+    mostrarNotificacion('🔍 Aplicando algoritmo optimizado para proximidad geográfica...', 'info');
+    
+    if (!marcadores || marcadores.length < 2) {
+        mostrarNotificacion('❌ Se necesitan al menos 2 personas con direcciones para agrupar', 'warning');
+        return;
+    }
+
+    const radioMaximo = parseFloat(radioElement.value) || 3;
+    const minimoPersonas = parseInt(minimoElement.value) || 4;
+    const maximoPersonas = parseInt(maximoElement.value) || 7;
+
+    if (minimoPersonas > maximoPersonas) {
+        mostrarNotificacion('❌ El mínimo de personas no puede ser mayor que el máximo.', 'error');
+        return;
+    }
+    
+    console.log(`🎯 Configuración OPTIMIZADA: Radio ${radioMaximo}km, Mínimo ${minimoPersonas}, Máximo ${maximoPersonas} personas`);
+    
+    actualizarEstadisticasAgrupacion();
+    
+    const personasConCoordenadas = marcadores.filter(marcador => marcador.getPosition()).map((marcador, index) => ({
+        id: index,
+        persona: marcador.persona,
+        lista: marcador.lista,
+        lat: marcador.getPosition().lat(),
+        lng: marcador.getPosition().lng(),
+        marcador: marcador,
+        cluster: -1,
+        visitado: false
+    }));
+
+    if (personasConCoordenadas.length < minimoPersonas) {
+        mostrarNotificacion(`❌ Se necesitan al menos ${minimoPersonas} personas con coordenadas válidas`, 'warning');
+        return;
+    }
+    
+    // 🧠 ALGORITMO OPTIMIZADO: Clustering por densidad LOCAL
+    const gruposOptimos = crearGruposCompactos(personasConCoordenadas, radioMaximo, minimoPersonas, maximoPersonas);
+    
+    console.log(`🎯 Resultado OPTIMIZADO: ${gruposOptimos.length} grupos compactos encontrados`);
+    
+    // 📊 Mostrar estadísticas de calidad
+    mostrarEstadisticasProximidad(gruposOptimos);
+
+    if (gruposOptimos.length === 0) {
+        mostrarSugerenciasInteligentes(personasConCoordenadas, radioMaximo, minimoPersonas);
+        mostrarNotificacion(`❌ No se encontraron grupos óptimos. Intenta reducir el mínimo de personas o aumentar el radio.`, 'warning');
+        return;
+    }
+
+    mostrarConfirmacionAgrupacion(gruposOptimos, radioMaximo);
+}
+
+// 🎯 NUEVO ALGORITMO: Clustering por densidad local
+function crearGruposCompactos(puntos, radioMaximo, minimoPersonas, maximoPersonas) {
+    console.log('🔬 Iniciando clustering por densidad local...');
+    
+    const grupos = [];
+    const puntosUsados = new Set();
+    
+    // Ordenar puntos por densidad local (más vecinos primero)
+    const puntosOrdenados = puntos.map(punto => ({
+        ...punto,
+        densidad: calcularDensidadLocal(punto, puntos, radioMaximo)
+    })).sort((a, b) => b.densidad - a.densidad);
+    
+    console.log('📊 Puntos ordenados por densidad local');
+    
+    for (let i = 0; i < puntosOrdenados.length; i++) {
+        const puntoSemilla = puntosOrdenados[i];
+        
+        if (puntosUsados.has(puntoSemilla.id)) continue;
+        
+        // Crear grupo compacto desde este punto semilla
+        const grupoCompacto = crearGrupoDesdeSeemilla(
+            puntoSemilla, 
+            puntos, 
+            puntosUsados, 
+            radioMaximo, 
+            minimoPersonas, 
+            maximoPersonas
+        );
+        
+        if (grupoCompacto.length >= minimoPersonas) {
+            grupos.push(grupoCompacto);
+            console.log(`✅ Grupo compacto creado: ${grupoCompacto.length} personas, radio promedio: ${calcularRadioPromedio(grupoCompacto).toFixed(2)}km`);
             
-            const radioElement = document.getElementById('radioAgrupacion');
-            const minimoElement = document.getElementById('minimoPersonas');
-            const maximoElement = document.getElementById('maximoPersonas');
-            
-            if (!radioElement || !minimoElement || !maximoElement) {
-                mostrarNotificacion('❌ Error: Controles de agrupación no encontrados', 'error');
-                return;
-            }
-            
-            mostrarNotificacion('🔍 Analizando ubicaciones para crear grupos geográficos...', 'info');
-            
-            if (!marcadores || marcadores.length < 2) {
-                mostrarNotificacion('❌ Se necesitan al menos 2 personas con direcciones para agrupar', 'warning');
-                return;
-            }
-
-            const radioMaximo = parseFloat(radioElement.value) || 3;
-            const minimoPersonas = parseInt(minimoElement.value) || 3;
-            const maximoPersonas = parseInt(maximoElement.value) || 8;
-
-            if (minimoPersonas > maximoPersonas) {
-                mostrarNotificacion('❌ El mínimo de personas no puede ser mayor que el máximo.', 'error');
-                return;
-            }
-            
-            console.log(`🎯 Configuración: Radio ${radioMaximo}km, Mínimo ${minimoPersonas}, Máximo ${maximoPersonas} personas`);
-            
-            actualizarEstadisticasAgrupacion();
-            
-            const personasConCoordenadas = marcadores.filter(marcador => marcador.getPosition()).map(marcador => ({
-                persona: marcador.persona,
-                lista: marcador.lista,
-                lat: marcador.getPosition().lat(),
-                lng: marcador.getPosition().lng(),
-                marcador: marcador,
-                usado: false
-            }));
-
-            if (personasConCoordenadas.length < minimoPersonas) {
-                mostrarNotificacion(`❌ Se necesitan al menos ${minimoPersonas} personas con coordenadas válidas`, 'warning');
-                return;
-            }
-            
-            const grupos = [];
-            
-            personasConCoordenadas.forEach((personaBase, index) => {
-                if (personaBase.usado) return;
-
-                const zonaCompleta = [personaBase];
-                personaBase.usado = true;
-
-                personasConCoordenadas.forEach((otraPersona, otroIndex) => {
-                    if (otraPersona.usado) return;
-
-                    const distancia = calcularDistancia(
-                        personaBase.lat, personaBase.lng,
-                        otraPersona.lat, otraPersona.lng
-                    );
-
-                    if (distancia <= radioMaximo) {
-                        zonaCompleta.push(otraPersona);
-                        otraPersona.usado = true;
-                    }
-                });
-
-                // Si la zona encontrada cumple con el mínimo, la procesamos para dividirla
-                if (zonaCompleta.length >= minimoPersonas) {
-                     console.log(`🌍 Zona encontrada con ${zonaCompleta.length} personas. Dividiendo en grupos de máx. ${maximoPersonas}...`);
-                    
-                    while (zonaCompleta.length > 0) {
-                        const nuevoSubGrupo = zonaCompleta.splice(0, maximoPersonas);
-                        
-                        // Solo se crea el subgrupo si cumple con el tamaño MÍNIMO
-                        if (nuevoSubGrupo.length >= minimoPersonas) {
-                            grupos.push(nuevoSubGrupo);
-                            console.log(`✅ Subgrupo creado con ${nuevoSubGrupo.length} personas.`);
-                        } else {
-                            console.log(`❌ Subgrupo de ${nuevoSubGrupo.length} personas descartado (mínimo ${minimoPersonas}).`);
-                        }
-                    }
-                } else {
-                    // Si no, liberamos a las personas para que puedan ser parte de otro grupo
-                    zonaCompleta.forEach(p => p.usado = false);
-                }
-            });
-
-            console.log(`🎯 Resultado: ${grupos.length} grupos válidos encontrados`);
-
-            if (grupos.length === 0) {
-                mostrarSugerenciasInteligentes(personasConCoordenadas, radioMaximo, minimoPersonas);
-                mostrarNotificacion(`❌ No se encontraron grupos. Ver sugerencias abajo.`, 'warning');
-                return;
-            }
-
-            mostrarConfirmacionAgrupacion(grupos, radioMaximo);
+            // Marcar todos los puntos del grupo como usados
+            grupoCompacto.forEach(punto => puntosUsados.add(punto.id));
         }
+    }
+    
+    // 🔄 Intentar incluir puntos restantes en grupos existentes (si están cerca)
+    asignarPuntosRestantes(puntos, grupos, puntosUsados, radioMaximo, maximoPersonas);
+    
+    return grupos;
+}
 
+function calcularDensidadLocal(punto, todosLosPuntos, radio) {
+    let vecinos = 0;
+    for (let i = 0; i < todosLosPuntos.length; i++) {
+        if (todosLosPuntos[i].id !== punto.id) {
+            const distancia = calcularDistancia(
+                punto.lat, punto.lng,
+                todosLosPuntos[i].lat, todosLosPuntos[i].lng
+            );
+            if (distancia <= radio) {
+                vecinos++;
+            }
+        }
+    }
+    return vecinos;
+}
+
+function crearGrupoDesdeSeemilla(semilla, todosLosPuntos, puntosUsados, radioMaximo, minimoPersonas, maximoPersonas) {
+    const grupo = [semilla];
+    const candidatos = [];
+    
+    // Encontrar todos los candidatos cercanos no usados
+    for (let i = 0; i < todosLosPuntos.length; i++) {
+        const punto = todosLosPuntos[i];
+        
+        if (punto.id === semilla.id || puntosUsados.has(punto.id)) continue;
+        
+        const distancia = calcularDistancia(
+            semilla.lat, semilla.lng,
+            punto.lat, punto.lng
+        );
+        
+        if (distancia <= radioMaximo) {
+            candidatos.push({ punto, distancia });
+        }
+    }
+    
+    // Ordenar candidatos por distancia (más cercanos primero)
+    candidatos.sort((a, b) => a.distancia - b.distancia);
+    
+    // Agregar candidatos mientras mantenemos compacidad
+    for (let i = 0; i < candidatos.length && grupo.length < maximoPersonas; i++) {
+        const candidato = candidatos[i].punto;
+        
+        // Verificar que el candidato mantenga la compacidad del grupo
+        if (mantiendeCompacidad(candidato, grupo, radioMaximo)) {
+            grupo.push(candidato);
+        }
+    }
+    
+    return grupo;
+}
+
+function mantiendeCompacidad(nuevoPunto, grupoActual, radioMaximo) {
+    // El nuevo punto debe estar cerca de AL MENOS la mitad del grupo
+    let conexiones = 0;
+    const umbralConexiones = Math.ceil(grupoActual.length / 2);
+    
+    for (let i = 0; i < grupoActual.length; i++) {
+        const distancia = calcularDistancia(
+            nuevoPunto.lat, nuevoPunto.lng,
+            grupoActual[i].lat, grupoActual[i].lng
+        );
+        
+        if (distancia <= radioMaximo * 0.8) { // Más estricto para mantener compacidad
+            conexiones++;
+        }
+    }
+    
+    return conexiones >= umbralConexiones;
+}
+
+function asignarPuntosRestantes(todosLosPuntos, grupos, puntosUsados, radioMaximo, maximoPersonas) {
+    const puntosRestantes = todosLosPuntos.filter(p => !puntosUsados.has(p.id));
+    
+    console.log(`🔄 Intentando asignar ${puntosRestantes.length} puntos restantes...`);
+    
+    for (let i = 0; i < puntosRestantes.length; i++) {
+        const punto = puntosRestantes[i];
+        let mejorGrupo = -1;
+        let menorDistancia = Infinity;
+        
+        // Encontrar el grupo más cercano que tenga espacio
+        for (let j = 0; j < grupos.length; j++) {
+            if (grupos[j].length >= maximoPersonas) continue;
+            
+            const distanciaAlGrupo = calcularDistanciaMinimiaAlGrupo(punto, grupos[j]);
+            
+            if (distanciaAlGrupo <= radioMaximo && distanciaAlGrupo < menorDistancia) {
+                menorDistancia = distanciaAlGrupo;
+                mejorGrupo = j;
+            }
+        }
+        
+        if (mejorGrupo !== -1) {
+            grupos[mejorGrupo].push(punto);
+            puntosUsados.add(punto.id);
+            console.log(`🔗 Punto asignado a grupo existente (distancia: ${menorDistancia.toFixed(2)}km)`);
+        }
+    }
+}
+
+function calcularDistanciaMinimiaAlGrupo(punto, grupo) {
+    let menorDistancia = Infinity;
+    
+    for (let i = 0; i < grupo.length; i++) {
+        const distancia = calcularDistancia(
+            punto.lat, punto.lng,
+            grupo[i].lat, grupo[i].lng
+        );
+        
+        if (distancia < menorDistancia) {
+            menorDistancia = distancia;
+        }
+    }
+    
+    return menorDistancia;
+}
+
+function calcularRadioPromedio(grupo) {
+    if (grupo.length <= 1) return 0;
+    
+    const centroide = {
+        lat: grupo.reduce((sum, p) => sum + p.lat, 0) / grupo.length,
+        lng: grupo.reduce((sum, p) => sum + p.lng, 0) / grupo.length
+    };
+    
+    const distancias = grupo.map(p => calcularDistancia(p.lat, p.lng, centroide.lat, centroide.lng));
+    return distancias.reduce((sum, d) => sum + d, 0) / distancias.length;
+}
+
+function mostrarEstadisticasProximidad(grupos) {
+    let distanciaPromedioTotal = 0;
+    let gruposAnalizados = 0;
+    
+    grupos.forEach((grupo, index) => {
+        const radioPromedio = calcularRadioPromedio(grupo);
+        distanciaPromedioTotal += radioPromedio;
+        gruposAnalizados++;
+        
+        console.log(`📊 Grupo ${index + 1}: ${grupo.length} personas, radio promedio: ${radioPromedio.toFixed(2)}km`);
+    });
+    
+    const distanciaPromedioGlobal = gruposAnalizados > 0 ? distanciaPromedioTotal / gruposAnalizados : 0;
+    console.log(`📈 Distancia promedio global MEJORADA: ${distanciaPromedioGlobal.toFixed(2)}km`);
+}
+
+    // 🧠 IMPLEMENTACIÓN DEL ALGORITMO DBSCAN
+     function dbscanClustering(puntos, epsilon, minPuntos) {
+         console.log(`🔬 Ejecutando DBSCAN: epsilon=${epsilon}km, minPuntos=${minPuntos}`);
+    
+         let clusterActual = 0;
+         const clusters = [];
+    
+         for (let i = 0; i < puntos.length; i++) {
+             const punto = puntos[i];
+        
+             if (punto.visitado) continue;
+             punto.visitado = true;
+        
+             // Encontrar vecinos dentro del radio
+             const vecinos = obtenerVecinos(punto, puntos, epsilon);
+        
+             if (vecinos.length < minPuntos) {
+                 // Punto de ruido - se tratará después
+                 punto.cluster = -1;
+             } else {
+                 // Punto núcleo - crear nuevo cluster
+                 clusters[clusterActual] = [];
+                 expandirCluster(punto, vecinos, clusterActual, epsilon, minPuntos, puntos, clusters);
+                 clusterActual++;
+             }
+         }
+    
+         // Asignar puntos de ruido al cluster más cercano (si existe)
+         asignarPuntosRuido(puntos, clusters, epsilon);
+    
+         console.log(`✅ DBSCAN completado: ${clusters.length} clusters encontrados`);
+         return clusters.filter(cluster => cluster.length >= minPuntos);
+     }
+
+     function obtenerVecinos(punto, puntos, epsilon) {
+         const vecinos = [];
+    
+         for (let i = 0; i < puntos.length; i++) {
+             const otroPunto = puntos[i];
+             if (punto.id !== otroPunto.id) {
+                 const distancia = calcularDistancia(punto.lat, punto.lng, otroPunto.lat, otroPunto.lng);
+                 if (distancia <= epsilon) {
+                     vecinos.push(otroPunto);
+                 }
+             }
+         }
+    
+         return vecinos;
+     }
+
+     function expandirCluster(punto, vecinos, clusterNum, epsilon, minPuntos, puntos, clusters) {
+         clusters[clusterNum].push(punto);
+         punto.cluster = clusterNum;
+    
+         for (let i = 0; i < vecinos.length; i++) {
+             const vecino = vecinos[i];
+        
+             if (!vecino.visitado) {
+                 vecino.visitado = true;
+                 const nuevosVecinos = obtenerVecinos(vecino, puntos, epsilon);
+            
+                 if (nuevosVecinos.length >= minPuntos) {
+                     // Fusionar nuevos vecinos
+                     for (let j = 0; j < nuevosVecinos.length; j++) {
+                         if (vecinos.findIndex(v => v.id === nuevosVecinos[j].id) === -1) {
+                             vecinos.push(nuevosVecinos[j]);
+                         }
+                     }
+                 }
+             }
+        
+             if (vecino.cluster === -1) {
+                 clusters[clusterNum].push(vecino);
+                 vecino.cluster = clusterNum;
+             }
+         }
+     }
+
+     function asignarPuntosRuido(puntos, clusters, epsilon) {
+         const puntosRuido = puntos.filter(p => p.cluster === -1);
+    
+         for (let i = 0; i < puntosRuido.length; i++) {
+             const puntoRuido = puntosRuido[i];
+             let clusterMasCercano = -1;
+             let distanciaMinima = Infinity;
+        
+             for (let j = 0; j < clusters.length; j++) {
+                 const cluster = clusters[j];
+                 for (let k = 0; k < cluster.length; k++) {
+                     const puntoCluster = cluster[k];
+                     const distancia = calcularDistancia(
+                         puntoRuido.lat, puntoRuido.lng, 
+                         puntoCluster.lat, puntoCluster.lng
+                     );
+                
+                     if (distancia < distanciaMinima && distancia <= epsilon * 1.5) {
+                         distanciaMinima = distancia;
+                         clusterMasCercano = j;
+                     }
+                 }
+             }
+        
+             if (clusterMasCercano !== -1) {
+                 clusters[clusterMasCercano].push(puntoRuido);
+                 puntoRuido.cluster = clusterMasCercano;
+                 console.log(`🔗 Punto de ruido asignado al cluster ${clusterMasCercano}`);
+             }
+         }
+     }
+
+     // 🔧 POST-PROCESAMIENTO DE CLUSTERS
+     function postProcesarClusters(clusters, minPersonas, maxPersonas, radioMaximo) {
+         console.log('🔧 Post-procesando clusters para optimizar tamaños...');
+    
+         const gruposFinales = [];
+    
+         for (let i = 0; i < clusters.length; i++) {
+             const cluster = clusters[i];
+        
+             if (cluster.length < minPersonas) {
+                 console.log(`❌ Cluster ${i} con ${cluster.length} personas descartado (mínimo ${minPersonas})`);
+                 continue;
+             }
+        
+             if (cluster.length <= maxPersonas) {
+                 // Cluster de tamaño óptimo
+                 gruposFinales.push(cluster);
+                 console.log(`✅ Cluster ${i} con ${cluster.length} personas aceptado`);
+             } else {
+                 // Cluster muy grande - dividir inteligentemente
+                 console.log(`🔄 Cluster ${i} con ${cluster.length} personas - dividiendo...`);
+                 const subgrupos = dividirClusterInteligente(cluster, minPersonas, maxPersonas, radioMaximo);
+                 gruposFinales.push(...subgrupos);
+             }
+         }
+    
+         // 🎯 OPTIMIZACIÓN FINAL: Balancear tamaños
+         balancearGrupos(gruposFinales, minPersonas, maxPersonas, radioMaximo);
+    
+         return gruposFinales;
+     }
+
+     function dividirClusterInteligente(cluster, minPersonas, maxPersonas, radioMaximo) {
+         console.log(`🧩 Dividiendo cluster de ${cluster.length} personas...`);
+    
+         // Usar K-means para dividir el cluster en subgrupos óptimos
+         const numGrupos = Math.ceil(cluster.length / maxPersonas);
+         const subgrupos = kmeansClustering(cluster, numGrupos, minPersonas);
+    
+         console.log(`✅ Cluster dividido en ${subgrupos.length} subgrupos`);
+         return subgrupos;
+     }
+
+     function kmeansClustering(puntos, k, minPersonas) {
+         if (puntos.length <= minPersonas || k <= 1) {
+             return [puntos];
+         }
+    
+         // Inicializar centroides aleatoriamente
+         let centroides = [];
+         for (let i = 0; i < k; i++) {
+             const index = Math.floor(Math.random() * puntos.length);
+             centroides.push({
+                 lat: puntos[index].lat,
+                 lng: puntos[index].lng
+             });
+         }
+    
+         let iteraciones = 0;
+         const maxIteraciones = 50;
+         let cambios = true;
+         let clusters = []; // Declarar clusters fuera del while para que exista después
+
+         while (cambios && iteraciones < maxIteraciones) {
+             cambios = false;
+             iteraciones++;
+        
+             // Asignar cada punto al centroide más cercano
+             clusters = Array(k).fill().map(() => []); // ← CORREGIDO: era 'grupos'
+        
+             for (let i = 0; i < puntos.length; i++) {
+                 const punto = puntos[i];
+                 let clusterMasCercano = 0;
+                 let distanciaMinima = Infinity;
+            
+                 for (let j = 0; j < centroides.length; j++) {
+                     const distancia = calcularDistancia(
+                         punto.lat, punto.lng,
+                         centroides[j].lat, centroides[j].lng
+                     );
+                
+                     if (distancia < distanciaMinima) {
+                         distanciaMinima = distancia;
+                         clusterMasCercano = j;
+                     }
+                 }
+            
+                 clusters[clusterMasCercano].push(punto); // ← CORREGIDO: era 'grupos'
+             }
+        
+             // Recalcular centroides
+             for (let i = 0; i < k; i++) {
+                 if (clusters[i].length > 0) { // ← CORREGIDO: era 'grupos'
+                     const nuevoCentroide = {
+                         lat: clusters[i].reduce((sum, p) => sum + p.lat, 0) / clusters[i].length, // ← CORREGIDO
+                         lng: clusters[i].reduce((sum, p) => sum + p.lng, 0) / clusters[i].length  // ← CORREGIDO
+                     };
+                
+                     const distanciaCambio = calcularDistancia(
+                         centroides[i].lat, centroides[i].lng,
+                         nuevoCentroide.lat, nuevoCentroide.lng
+                     );
+                
+                     if (distanciaCambio > 0.001) { // 1 metro de cambio
+                         cambios = true;
+                     }
+                
+                     centroides[i] = nuevoCentroide;
+                 }
+             }
+         }
+    
+         // Filtrar grupos que cumplen el mínimo
+         const gruposValidos = clusters.filter(cluster => cluster.length >= minPersonas); // ← CORREGIDO
+         console.log(`🎯 K-means completado en ${iteraciones} iteraciones: ${gruposValidos.length} grupos válidos`);
+    
+         return gruposValidos;
+     }
+
+     function balancearGrupos(grupos, minPersonas, maxPersonas, radioMaximo) {
+         console.log('⚖️ Balanceando tamaños de grupos...');
+    
+         // Identificar grupos muy pequeños y muy grandes
+         const gruposPequenos = grupos.filter(g => g.length < minPersonas + 1);
+         const gruposGrandes = grupos.filter(g => g.length > maxPersonas - 1);
+    
+         // Intentar redistribuir personas de grupos grandes a pequeños
+         for (let i = 0; i < gruposPequenos.length && gruposGrandes.length > 0; i++) {
+             const grupoPequeno = gruposPequenos[i];
+        
+             for (let j = 0; j < gruposGrandes.length; j++) {
+                 const grupoGrande = gruposGrandes[j];
+            
+                 if (grupoGrande.length <= minPersonas) continue;
+            
+                 // Encontrar la persona del grupo grande más cercana al grupo pequeño
+                 let personaMasCercana = null;
+                 let distanciaMinima = Infinity;
+            
+                 const centroGrupoPequeno = calcularCentroide(grupoPequeno);
+            
+                 for (let k = 0; k < grupoGrande.length; k++) {
+                     const persona = grupoGrande[k];
+                     const distancia = calcularDistancia(
+                         persona.lat, persona.lng,
+                         centroGrupoPequeno.lat, centroGrupoPequeno.lng
+                     );
+                
+                     if (distancia < distanciaMinima && distancia <= radioMaximo) {
+                         distanciaMinima = distancia;
+                         personaMasCercana = persona;
+                     }
+                 }
+            
+                 // Mover la persona si es beneficioso
+                 if (personaMasCercana && grupoPequeno.length < maxPersonas) {
+                     const index = grupoGrande.indexOf(personaMasCercana);
+                     grupoGrande.splice(index, 1);
+                     grupoPequeno.push(personaMasCercana);
+                
+                     console.log(`🔄 Persona movida de grupo grande a pequeño (distancia: ${distanciaMinima.toFixed(2)}km)`);
+                     break;
+                 }
+             }
+         }
+     }
+
+     function calcularCentroide(grupo) {
+         const lat = grupo.reduce((sum, p) => sum + p.lat, 0) / grupo.length;
+         const lng = grupo.reduce((sum, p) => sum + p.lng, 0) / grupo.length;
+         return { lat, lng };
+     }
         function actualizarEstadisticasAgrupacion() {
             const statsPanel = document.getElementById('statsAgrupacion');
             if (!statsPanel) return;

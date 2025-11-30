@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Editar Persona - {{ tarjeta.nombre_completo }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
+
     <style>
         :root {
             --primary-color: #667eea;
@@ -448,7 +449,8 @@
             <div class="header-content">
                 <div class="header-info">
                     <div class="avatar">
-                        {{ tarjeta.nombre[0] if tarjeta.nombre else 'P' }}{{ tarjeta.apellido[0] if tarjeta.apellido else '' }}
+                        {{ tarjeta.nombre[0] if tarjeta.nombre else 'P' }}{{ tarjeta.apellido[0] if tarjeta.apellido
+                        else '' }}
                     </div>
                     <div class="header-text">
                         <h1>{{ tarjeta.nombre_completo or tarjeta.titulo }}</h1>
@@ -503,6 +505,10 @@
                     <i class="fas fa-heart"></i>
                     Información Familiar
                 </button>
+                <button type="button" class="tab" onclick="switchTab('eclesiastica')">
+                    <i class="fas fa-church"></i>
+                    Información Eclesiástica
+                </button>
                 <button type="button" class="tab" onclick="switchTab('adicional')">
                     <i class="fas fa-clipboard"></i>
                     Información Adicional
@@ -531,8 +537,8 @@
                             </label>
                             <div class="input-group">
                                 <i class="fas fa-user input-icon"></i>
-                                <input type="text" name="nombre" class="form-input" 
-                                       value="{{ tarjeta.nombre }}" required>
+                                <input type="text" name="nombre" class="form-input" value="{{ tarjeta.nombre }}"
+                                    required>
                             </div>
                         </div>
 
@@ -542,8 +548,8 @@
                             </label>
                             <div class="input-group">
                                 <i class="fas fa-user input-icon"></i>
-                                <input type="text" name="apellido" class="form-input" 
-                                       value="{{ tarjeta.apellido }}" required>
+                                <input type="text" name="apellido" class="form-input" value="{{ tarjeta.apellido }}"
+                                    required>
                             </div>
                         </div>
 
@@ -551,8 +557,8 @@
                             <label class="form-label">Edad</label>
                             <div class="input-group">
                                 <i class="fas fa-birthday-cake input-icon"></i>
-                                <input type="number" name="edad" class="form-input" 
-                                       value="{{ tarjeta.edad }}" min="0" max="120">
+                                <input type="number" name="edad" class="form-input" value="{{ tarjeta.edad }}" min="0"
+                                    max="120">
                             </div>
                         </div>
 
@@ -560,11 +566,16 @@
                             <label class="form-label">Estado Civil</label>
                             <select name="estado_civil" class="form-input">
                                 <option value="">Seleccionar...</option>
-                                <option value="Soltero" {{ 'selected' if tarjeta.estado_civil == 'Soltero' else '' }}>Soltero(a)</option>
-                                <option value="Casado" {{ 'selected' if tarjeta.estado_civil == 'Casado' else '' }}>Casado(a)</option>
-                                <option value="Divorciado" {{ 'selected' if tarjeta.estado_civil == 'Divorciado' else '' }}>Divorciado(a)</option>
-                                <option value="Viudo" {{ 'selected' if tarjeta.estado_civil == 'Viudo' else '' }}>Viudo(a)</option>
-                                <option value="Unión libre" {{ 'selected' if tarjeta.estado_civil == 'Unión libre' else '' }}>Unión libre</option>
+                                <option value="Soltero" {{ 'selected' if tarjeta.estado_civil=='Soltero' else '' }}>
+                                    Soltero(a)</option>
+                                <option value="Casado" {{ 'selected' if tarjeta.estado_civil=='Casado' else '' }}>
+                                    Casado(a)</option>
+                                <option value="Divorciado" {{ 'selected' if tarjeta.estado_civil=='Divorciado' else ''
+                                    }}>Divorciado(a)</option>
+                                <option value="Viudo" {{ 'selected' if tarjeta.estado_civil=='Viudo' else '' }}>Viudo(a)
+                                </option>
+                                <option value="Unión libre" {{ 'selected' if tarjeta.estado_civil=='Unión libre' else ''
+                                    }}>Unión libre</option>
                             </select>
                         </div>
 
@@ -572,9 +583,8 @@
                             <label class="form-label">Ocupación</label>
                             <div class="input-group">
                                 <i class="fas fa-briefcase input-icon"></i>
-                                <input type="text" name="ocupacion" class="form-input" 
-                                       value="{{ tarjeta.ocupacion }}" 
-                                       placeholder="Ej: Ingeniero, Profesor, Estudiante...">
+                                <input type="text" name="ocupacion" class="form-input" value="{{ tarjeta.ocupacion }}"
+                                    placeholder="Ej: Ingeniero, Profesor, Estudiante...">
                             </div>
                         </div>
                     </div>
@@ -606,9 +616,8 @@
                             <label class="form-label">Teléfono</label>
                             <div class="input-group">
                                 <i class="fas fa-phone input-icon"></i>
-                                <input type="tel" name="telefono" class="form-input" 
-                                       value="{{ tarjeta.telefono }}" 
-                                       placeholder="(407) 555-0123">
+                                <input type="tel" name="telefono" class="form-input" value="{{ tarjeta.telefono }}"
+                                    placeholder="(407) 555-0123">
                             </div>
                         </div>
 
@@ -616,9 +625,8 @@
                             <label class="form-label">Email</label>
                             <div class="input-group">
                                 <i class="fas fa-envelope input-icon"></i>
-                                <input type="email" name="email" class="form-input" 
-                                       value="{{ tarjeta.email }}" 
-                                       placeholder="ejemplo@correo.com">
+                                <input type="email" name="email" class="form-input" value="{{ tarjeta.email }}"
+                                    placeholder="ejemplo@correo.com">
                             </div>
                         </div>
 
@@ -626,19 +634,23 @@
                             <label class="form-label">Dirección</label>
                             <div class="input-group" style="position: relative;">
                                 <i class="fas fa-map-marker-alt input-icon"></i>
-                                <input type="text" id="direccionInput" name="direccion" class="form-input" 
-                                       value="{{ tarjeta.direccion }}" 
-                                       placeholder="Comience a escribir la dirección (ej: 123 Main Street, Orlando)...">
-                                <div id="autocompleteStatus" class="autocomplete-status" title="Estado del autocompletar"></div>
+                                <input type="text" id="direccionInput" name="direccion" class="form-input"
+                                    value="{{ tarjeta.direccion }}"
+                                    placeholder="Comience a escribir la dirección (ej: 123 Main Street, Orlando)...">
+                                <div id="autocompleteStatus" class="autocomplete-status"
+                                    title="Estado del autocompletar"></div>
                             </div>
                             <div class="debug-buttons">
-                                <button type="button" onclick="reinicializarAutocompletar()" class="btn btn-sm btn-secondary">
+                                <button type="button" onclick="reinicializarAutocompletar()"
+                                    class="btn btn-sm btn-secondary">
                                     <i class="fas fa-refresh"></i> Reiniciar
                                 </button>
-                                <button type="button" onclick="testearAutocompletar()" class="btn btn-sm" style="background: #f59e0b; color: white;">
+                                <button type="button" onclick="testearAutocompletar()" class="btn btn-sm"
+                                    style="background: #f59e0b; color: white;">
                                     <i class="fas fa-bug"></i> Test
                                 </button>
-                                <button type="button" onclick="probarDireccionEjemplo()" class="btn btn-sm" style="background: #10b981; color: white;">
+                                <button type="button" onclick="probarDireccionEjemplo()" class="btn btn-sm"
+                                    style="background: #10b981; color: white;">
                                     <i class="fas fa-lightbulb"></i> Ejemplo
                                 </button>
                             </div>
@@ -668,8 +680,8 @@
                             <label class="form-label">Número de Hijos</label>
                             <div class="input-group">
                                 <i class="fas fa-child input-icon"></i>
-                                <input type="number" name="numero_hijos" class="form-input" 
-                                       value="{{ tarjeta.numero_hijos or 0 }}" min="0" max="20">
+                                <input type="number" name="numero_hijos" class="form-input"
+                                    value="{{ tarjeta.numero_hijos or 0 }}" min="0" max="20">
                             </div>
                         </div>
 
@@ -677,9 +689,8 @@
                             <label class="form-label">Edades de los Hijos</label>
                             <div class="input-group">
                                 <i class="fas fa-birthday-cake input-icon"></i>
-                                <input type="text" name="edades_hijos" class="form-input" 
-                                       value="{{ tarjeta.edades_hijos }}" 
-                                       placeholder="Ej: 5, 8, 12">
+                                <input type="text" name="edades_hijos" class="form-input"
+                                    value="{{ tarjeta.edades_hijos }}" placeholder="Ej: 5, 8, 12">
                             </div>
                         </div>
                     </div>
@@ -695,9 +706,8 @@
                             <label class="form-label">Nombre del Cónyuge</label>
                             <div class="input-group">
                                 <i class="fas fa-user input-icon"></i>
-                                <input type="text" name="nombre_conyuge" class="form-input" 
-                                       value="{{ tarjeta.nombre_conyuge }}" 
-                                       placeholder="Nombre completo del cónyuge">
+                                <input type="text" name="nombre_conyuge" class="form-input"
+                                    value="{{ tarjeta.nombre_conyuge }}" placeholder="Nombre completo del cónyuge">
                             </div>
                         </div>
 
@@ -705,16 +715,73 @@
                             <label class="form-label">Teléfono del Cónyuge</label>
                             <div class="input-group">
                                 <i class="fas fa-phone input-icon"></i>
-                                <input type="tel" name="telefono_conyuge" class="form-input" 
-                                       value="{{ tarjeta.telefono_conyuge }}" 
-                                       placeholder="(407) 555-0124">
+                                <input type="tel" name="telefono_conyuge" class="form-input"
+                                    value="{{ tarjeta.telefono_conyuge }}" placeholder="(407) 555-0124">
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Tab 4: Información Adicional -->
+            <!-- Tab 4: Información Eclesiástica -->
+            <div id="eclesiastica" class="tab-content">
+                <div class="alert alert-info">
+                    <i class="fas fa-church"></i>
+                    <div>
+                        <strong>Información Eclesiástica</strong><br>
+                        Datos sobre la participación en la iglesia.
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h2 class="section-title">
+                        <i class="fas fa-users icon"></i>
+                        Participación
+                    </h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Estado Bautismal</label>
+                            <label
+                                class="flex items-center gap-2 cursor-pointer p-3 border rounded-lg hover:bg-gray-50">
+                                <input type="checkbox" name="bautizado" class="form-checkbox h-5 w-5 text-blue-600"
+                                    {{ 'checked' if tarjeta.bautizado else '' }}>
+                                <span class="text-gray-700">¿Está Bautizado?</span>
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Grupos Pequeños</label>
+                            <label
+                                class="flex items-center gap-2 cursor-pointer p-3 border rounded-lg hover:bg-gray-50">
+                                <input type="checkbox" name="asiste_grupo" class="form-checkbox h-5 w-5 text-blue-600"
+                                    {{ 'checked' if tarjeta.asiste_grupo else '' }}>
+                                <span class="text-gray-700">¿Asiste a Grupo Pequeño?</span>
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Liderazgo</label>
+                            <label
+                                class="flex items-center gap-2 cursor-pointer p-3 border rounded-lg hover:bg-gray-50">
+                                <input type="checkbox" name="es_lider" class="form-checkbox h-5 w-5 text-blue-600"
+                                    {{ 'checked' if tarjeta.es_lider else '' }}>
+                                <span class="text-gray-700">¿Es Líder de Grupo?</span>
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Ministerio</label>
+                            <div class="input-group">
+                                <i class="fas fa-hands-helping input-icon"></i>
+                                <input type="text" name="ministerio" class="form-input" value="{{ tarjeta.ministerio }}"
+                                    placeholder="Ej: Alabanza, Ujieres, Niños...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 5: Información Adicional -->
             <div id="adicional" class="tab-content">
                 <div class="alert alert-info">
                     <i class="fas fa-clipboard"></i>
@@ -734,25 +801,27 @@
                             <label class="form-label">Responsable</label>
                             <div class="input-group">
                                 <i class="fas fa-user-tie input-icon"></i>
-                                <input type="text" name="responsable" class="form-input" 
-                                       value="{{ tarjeta.responsable }}" 
-                                       placeholder="Persona a cargo del seguimiento">
+                                <input type="text" name="responsable" class="form-input"
+                                    value="{{ tarjeta.responsable }}" placeholder="Persona a cargo del seguimiento">
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">Estado</label>
                             <select name="estado" class="form-input">
-                                <option value="activa" {{ 'selected' if tarjeta.estado == 'activa' else '' }}>Activa</option>
-                                <option value="inactiva" {{ 'selected' if tarjeta.estado == 'inactiva' else '' }}>Inactiva</option>
-                                <option value="visitante" {{ 'selected' if tarjeta.estado == 'visitante' else '' }}>Visitante</option>
+                                <option value="activa" {{ 'selected' if tarjeta.estado=='activa' else '' }}>Activa
+                                </option>
+                                <option value="inactiva" {{ 'selected' if tarjeta.estado=='inactiva' else '' }}>Inactiva
+                                </option>
+                                <option value="visitante" {{ 'selected' if tarjeta.estado=='visitante' else '' }}>
+                                    Visitante</option>
                             </select>
                         </div>
 
                         <div class="form-group full-width">
                             <label class="form-label">Notas Especiales</label>
-                            <textarea name="notas" class="form-input" rows="4" 
-                                      placeholder="Información adicional, observaciones, etc.">{{ tarjeta.notas }}</textarea>
+                            <textarea name="notas" class="form-input" rows="4"
+                                placeholder="Información adicional, observaciones, etc.">{{ tarjeta.notas }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -765,16 +834,13 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label class="form-label">Fecha de Creación</label>
-                            <input type="text" class="form-input" 
-                                   value="{{ tarjeta.fecha_creacion[:10] if tarjeta.fecha_creacion else 'N/A' }}" 
-                                   disabled>
+                            <input type="text" class="form-input"
+                                value="{{ tarjeta.fecha_creacion[:10] if tarjeta.fecha_creacion else 'N/A' }}" disabled>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">ID de la Persona</label>
-                            <input type="text" class="form-input" 
-                                   value="{{ tarjeta.id }}" 
-                                   disabled>
+                            <input type="text" class="form-input" value="{{ tarjeta.id }}" disabled>
                         </div>
                     </div>
                 </div>
@@ -794,7 +860,7 @@
         </form>
     </div>
 
-<!-- Scripts corregidos -->
+    <!-- Scripts corregidos -->
     <script>
         // ===== VARIABLES GLOBALES =====
         let map;
@@ -811,12 +877,12 @@
         // ===== NAVEGACIÓN ENTRE PESTAÑAS =====
         function switchTab(tabName) {
             debugLog('🔄 Cambiando a pestaña:', tabName);
-            
+
             // Remover clase active de todos los tabs
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            
+
             // Remover clase active de todos los contenidos
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
@@ -825,7 +891,7 @@
             // Activar tab seleccionado
             document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
             document.getElementById(tabName).classList.add('active');
-            
+
             debugLog('✅ Pestaña cambiada a:', tabName);
         }
 
@@ -839,9 +905,9 @@
                     <span>${mensaje}</span>
                 </div>
             `;
-            
+
             document.body.appendChild(toast);
-            
+
             setTimeout(() => toast.classList.add('show'), 100);
             setTimeout(() => {
                 toast.classList.remove('show');
@@ -855,17 +921,17 @@
                 debugLog('❌ Google Maps API no está cargada');
                 return false;
             }
-            
+
             if (typeof google.maps === 'undefined') {
                 debugLog('❌ Google Maps no está disponible');
                 return false;
             }
-            
+
             if (typeof google.maps.places === 'undefined') {
                 debugLog('❌ Google Places API no está disponible');
                 return false;
             }
-            
+
             debugLog('✅ Google Maps y Places API cargadas correctamente');
             return true;
         }
@@ -873,7 +939,7 @@
         function inicializarAutocompletar() {
             try {
                 debugLog('Inicializando autocompletar...');
-                
+
                 const input = document.getElementById('direccionInput');
                 if (!input) {
                     debugLog('❌ No se encontró el input de dirección');
@@ -887,17 +953,17 @@
                 };
 
                 autocomplete = new google.maps.places.Autocomplete(input, options);
-                
+
                 const orlandoBounds = new google.maps.LatLngBounds(
                     new google.maps.LatLng(28.3, -81.6),
                     new google.maps.LatLng(28.8, -81.1)
                 );
                 autocomplete.setBounds(orlandoBounds);
 
-                autocomplete.addListener('place_changed', function() {
+                autocomplete.addListener('place_changed', function () {
                     const place = autocomplete.getPlace();
                     debugLog('Lugar seleccionado:', place);
-                    
+
                     if (!place.geometry || !place.geometry.location) {
                         debugLog('❌ No se encontró ubicación');
                         return;
@@ -930,9 +996,9 @@
         function inicializarMapa() {
             try {
                 debugLog('Inicializando mapa...');
-                
+
                 const defaultLocation = { lat: 28.5383, lng: -81.3792 };
-                
+
                 map = new google.maps.Map(document.getElementById('miniMap'), {
                     zoom: 13,
                     center: defaultLocation
@@ -974,8 +1040,8 @@
         function geocodificarDireccion(direccion) {
             try {
                 const geocoder = new google.maps.Geocoder();
-                
-                geocoder.geocode({ 
+
+                geocoder.geocode({
                     address: direccion + ', Orlando, FL',
                     region: 'US'
                 }, (results, status) => {
@@ -989,7 +1055,7 @@
                         debugLog('❌ Error geocodificando:', status);
                     }
                 });
-                
+
             } catch (error) {
                 debugLog('❌ Error en geocodificación:', error);
             }
@@ -997,7 +1063,7 @@
 
         function initMap() {
             debugLog('🚀 Iniciando initMap...');
-            
+
             if (!checkGoogleMapsAPI()) {
                 setTimeout(() => {
                     debugLog('🔄 Reintentando inicialización...');
@@ -1008,47 +1074,47 @@
 
             inicializarMapa();
             inicializarAutocompletar();
-            
+
             debugLog('🎉 Inicialización completa');
         }
 
         // ===== FUNCIONES ADICIONALES =====
         function testearAutocompletar() {
             debugLog('🧪 Iniciando test de autocompletar...');
-            
+
             const resultados = [];
-            
+
             if (typeof google === 'undefined') {
                 resultados.push('❌ Google Maps API no cargada');
             } else {
                 resultados.push('✅ Google Maps API cargada');
             }
-            
+
             if (typeof google !== 'undefined' && google.maps && google.maps.places) {
                 resultados.push('✅ Google Places API disponible');
             } else {
                 resultados.push('❌ Google Places API no disponible');
             }
-            
+
             const input = document.getElementById('direccionInput');
             if (input) {
                 resultados.push('✅ Input de dirección encontrado');
             } else {
                 resultados.push('❌ Input de dirección no encontrado');
             }
-            
+
             if (autocomplete) {
                 resultados.push('✅ Autocomplete inicializado');
             } else {
                 resultados.push('❌ Autocomplete no inicializado');
             }
-            
+
             if (map) {
                 resultados.push('✅ Mapa inicializado');
             } else {
                 resultados.push('❌ Mapa no inicializado');
             }
-            
+
             const mensaje = resultados.join('\n');
             console.log('🧪 Resultados del test:\n' + mensaje);
             alert('🧪 Diagnóstico:\n\n' + mensaje);
@@ -1062,27 +1128,27 @@
                     '456 Orange Avenue, Orlando, FL',
                     '789 Church Street, Orlando, FL'
                 ];
-                
+
                 const ejemplo = ejemplos[Math.floor(Math.random() * ejemplos.length)];
                 input.value = ejemplo;
                 input.focus();
-                
+
                 const event = new Event('input', { bubbles: true });
                 input.dispatchEvent(event);
-                
+
                 mostrarNotificacion('Dirección de ejemplo insertada', 'success');
             }
         }
 
         function reinicializarAutocompletar() {
             debugLog('🔄 Reinicializando autocompletar...');
-            
+
             if (checkGoogleMapsAPI()) {
                 if (autocomplete) {
                     google.maps.event.clearInstanceListeners(autocomplete);
                     autocomplete = null;
                 }
-                
+
                 inicializarAutocompletar();
                 mostrarNotificacion('Autocompletar reinicializado', 'success');
             } else {
@@ -1091,16 +1157,16 @@
         }
 
         // ===== VALIDACIÓN DEL FORMULARIO =====
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             debugLog('📄 DOM cargado - Inicializando validaciones');
-            
+
             // Validación del formulario
             const form = document.querySelector('form');
             if (form) {
-                form.addEventListener('submit', function(e) {
+                form.addEventListener('submit', function (e) {
                     const nombre = document.querySelector('[name="nombre"]').value.trim();
                     const apellido = document.querySelector('[name="apellido"]').value.trim();
-                    
+
                     if (!nombre || !apellido) {
                         e.preventDefault();
                         mostrarNotificacion('El nombre y apellido son requeridos', 'error');
@@ -1111,13 +1177,13 @@
                     mostrarNotificacion('Guardando cambios...', 'success');
                 });
             }
-            
+
             // Asegurar que la primera pestaña esté activa
             switchTab('personal');
         });
 
         // ===== CONFIGURACIÓN GLOBAL =====
-        window.gm_authFailure = function() {
+        window.gm_authFailure = function () {
             debugLog('❌ Google Maps API Authentication Failed');
             mostrarNotificacion('Error de autenticación con Google Maps', 'error');
         };
@@ -1127,6 +1193,9 @@
     </script>
 
     <!-- Script de Google Maps -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAM44jyxplaDzn1m7bJ79RtQGCmzYNuOCg&libraries=places&callback=initMap" async defer></script>
+    <script
+        src="https://maps.googleapis.com/maps/api/js?key={{ config.GOOGLE_MAPS_API_KEY }}&libraries=places&callback=initMap"
+        async defer></script>
 </body>
+
 </html>
