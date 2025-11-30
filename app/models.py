@@ -62,7 +62,7 @@ class UserStorage:
         
     def get_user_by_email(self, email: str) -> Optional[Usuario]:
         for user in self.users.values():
-            if user.email.lower() == email.lower():
+            if user.email and user.email.lower() == email.lower():
                 return user
         return None
     
